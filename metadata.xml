@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+    <name>The Binding of Isaac: Alternity</name>
+    <directory>The-Binding-of-Isaac-Alternity</directory>
+    <description>What other thoughts exist beyond the darkest depths of Isaac's mind?</description>
+    <version>1.0</version>
+    <visibility>Public</visibility>
+    <tag id="Items"/>
+</metadata>
