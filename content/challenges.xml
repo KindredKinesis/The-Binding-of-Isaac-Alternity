@@ -1,0 +1,10 @@
+<challenges version="1">
+	<challenge name="Beam Physics" endstage="8" startingitems="358,118,221,68,120" roomfilter="4" difficulty="1" />
+	<challenge name="One Chance" playertype="10" endstage="8" startingitems="298,508,112,172,128" roomfilter="4" canshoot="false" difficulty="1" />
+	<challenge name="1000 Degree Knife" endstage="8" startingitems="114,257,289,256" roomfilter="4" difficulty="1" />
+	<challenge name="Rift Walker" playertype="15" endstage="10" startingitems="220,52,5,315,369,48,69" startingtrinkets="9" roomfilter="4" difficulty="1" />
+	<challenge name="The Gorgon's Gaze" playertype="1" endstage="10" altpath="false" startingitems="68,152,244,110,159,226" startingtrinkets="26" roomfilter="4" difficulty="1" />
+	<challenge name="Lightning Rod" playertype="4" endstage="8" startingitems="222,494,397,310,330" roomfilter="4" difficulty="1" /> 
+	<challenge name="Heavy Rain" playertype="3" endstage="10" altpath="true" startingitems="371,149,220" roomfilter="4" difficulty="1" />
+	<challenge name="Sadomasochism" playertype="7" endstage="11" altpath="true" startingitems="238,239,157,219,225" roomfilter="4" difficulty="1" />
+</challenges>
