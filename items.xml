@@ -1,0 +1,3 @@
+<items gfxroot="gfx/items/" version="1">
+	<active name="Excalibur" description="Free your blade's destiny!" maxcharges="0" gfx="collectible_excalibur.png"/>
+</items>
