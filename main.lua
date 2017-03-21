@@ -45,48 +45,50 @@ function Alternity:CloakAndDaggerEffect()
     playerdata.CloakAndDagger = playerdata.CloakAndDagger + 1 --Increase Cloak and Dagger charge by 1
   end
   
-  if playerdata.CloakAndDagger == 60 then --If Cloak and Dagger charge equals 60 (2 seconds or so)
-    local knife = Isaac.Spawn(3,CADKnife,0,player.Position,Vector(0,0),player)
-    local data = knife:GetData()
-    data.MoveX = 0
-    data.MoveY = 0
-    data.Radius = 30
-    data.XSign = 1
-    data.YSign = 1
-    knife.CollisionDamage = 20
-    playerdata.CloakAndDagger = 0
+  if playerdata.CloakAndDagger == 120 then --If Cloak and Dagger charge equals 60 (2 seconds or so)
+    local knife = Isaac.Spawn(3,CADKnife,0,player.Position,Vector(0,0),player) --Spawns a dagger
+    local data = knife:GetData() --Gets the data for the dagger (Used to store entity specific variables)
+    data.MoveX = 0 --X Position
+    data.MoveY = 50 --Y Position
+    data.Radius = 50 --Radius of orbit circle
+    data.XSign = 1 --Used for orbit
+    data.YSign = 1 --Used for orbit
+    knife.CollisionDamage = 10 --Damage of the dagger
+    playerdata.CloakAndDagger = 0 --Resets the Cloak and Dagger charge
   end
+  
+  DebugText[1] = playerdata.CloakAndDagger .. "/120 for dagger"
 end
 
 function Alternity:CADKnifeUpdate(knife)
-  local player = Isaac.GetPlayer(0)
-  local sprite = knife:GetSprite()
-  local data = knife:GetData()
+  local player = Isaac.GetPlayer(0) --Gets the player
+  local sprite = knife:GetSprite() --Gets the dagger's sprite
+  local data = knife:GetData() --Gets the dagger's data (Used to store entity specific variables)
   
-  DebugText = {}
-  table.insert(DebugText,data.MoveX)
-  table.insert(DebugText,data.MoveY)
-  table.insert(DebugText,data.XSign)
-  table.insert(DebugText,data.YSign)
-  table.insert(DebugText,data.Radius)
+  DebugText[2] = data.MoveX
+  DebugText[3] = data.MoveY
+  DebugText[4] = data.XSign
+  DebugText[5] = data.YSign
+  DebugText[6] = data.Radius
   
-  if data.MoveX >= data.Radius then
-    data.XSign = -1
-    data.YSign = -1
-  elseif data.MoveX <= (data.Radius * -1) then
-    data.XSign = 1
-    data.YSign = 1
+  if data.MoveX >= data.Radius then --If the X position is bigger than the orbit circle
+    data.XSign = -1 --Inverts the orbit direction
+    data.YSign = -1 --Inverts the orbit direction
+  elseif data.MoveX <= (data.Radius * -1) then --If the X position is bigger than the orbit circle
+    data.XSign = 1 --Inverts the orbit direction
+    data.YSign = 1 --Inverts the orbit direction
   end
   
-  data.MoveX = data.MoveX + (data.XSign * 5)
-  data.MoveY = math.floor(math.sqrt(data.Radius^2 - data.MoveX^2) * data.YSign)
+  data.MoveX = data.MoveX + (data.XSign * 5) --Increase/Decrease X position by 5
+  data.MoveY = math.floor(math.sqrt(data.Radius^2 - data.MoveX^2) * data.YSign) --Circle formula multiplied by the Y orbit invertor (Above or below the player)
+  data.MoveY = data.MoveY - ((data.MoveY % 5) * data.YSign) --Rounds Y position down to the nearest 5
   
-  knife.Position = Vector(player.Position.X + data.MoveX, player.Position.Y - 10 + data.MoveY)
-  sprite.Rotation = sprite.Rotation + 60
+  knife.Position = Vector(player.Position.X + data.MoveX, player.Position.Y - 10 + data.MoveY) --Sets position of the dagger to the player's position plus it's X and Y orbit positions
+  sprite.Rotation = sprite.Rotation + 6 --Rotates the dagger sprite
   
-  --if knife.FrameCount == 120 then
-    --knife:Remove()
-  --end
+  if knife.FrameCount == 66 then --If the dagger has been out for 60 ticks (About 2 seconds)
+    knife:Remove() --Remove the dagger
+  end
 end
 
 -----CALLBACKS-----
