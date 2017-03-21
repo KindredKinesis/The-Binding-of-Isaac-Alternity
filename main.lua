@@ -8,6 +8,8 @@ local DebugText = {}; --Not used in release
 -----VARIABLES-----
 
 local ExcaliburItem = Isaac.GetItemIdByName("Excalibur"); --Gets the item ID of Excalibur
+local CloakAndDaggerItem; --THIS NEEDS TO BE FILLED OUT
+local CADKnife = Isaac.GetEntityVariantByName("CloakDagger"); --Gets the variant of CloakDagger (Knife for Cloak and Dagger)
 
 -----FUNCTIONS-----
 
@@ -32,9 +34,68 @@ function Alternity:UseExcalibur()
   return true --Makes the player hold the item above their head
 end
 
+function Alternity:CloakAndDaggerEffect()
+  local player = Isaac.GetPlayer(0) --Gets the player
+  local entities = Isaac.GetRoomEntities() --Gets every entity in the room
+  local playerdata = player:GetData() --Gets the player's data
+  
+  if playerdata.CloakAndDagger == nil or player:GetFireDirection() == Direction.NO_DIRECTION then --If the player doesn't have a Cloak and Dagger charge or if they aren't shooting
+    playerdata.CloakAndDagger = 0 --Set the Cloak and Dagger charge to 0
+  else
+    playerdata.CloakAndDagger = playerdata.CloakAndDagger + 1 --Increase Cloak and Dagger charge by 1
+  end
+  
+  if playerdata.CloakAndDagger == 120 then --If Cloak and Dagger charge equals 60 (2 seconds or so)
+    local knife = Isaac.Spawn(3,CADKnife,0,player.Position,Vector(0,0),player) --Spawns a dagger
+    local data = knife:GetData() --Gets the data for the dagger (Used to store entity specific variables)
+    data.MoveX = 0 --X Position
+    data.MoveY = 50 --Y Position
+    data.Radius = 50 --Radius of orbit circle
+    data.XSign = 1 --Used for orbit
+    data.YSign = 1 --Used for orbit
+    knife.CollisionDamage = 10 --Damage of the dagger
+    playerdata.CloakAndDagger = 0 --Resets the Cloak and Dagger charge
+  end
+  
+  DebugText[1] = playerdata.CloakAndDagger .. "/120 for dagger"
+end
+
+function Alternity:CADKnifeUpdate(knife)
+  local player = Isaac.GetPlayer(0) --Gets the player
+  local sprite = knife:GetSprite() --Gets the dagger's sprite
+  local data = knife:GetData() --Gets the dagger's data (Used to store entity specific variables)
+  
+  DebugText[2] = data.MoveX
+  DebugText[3] = data.MoveY
+  DebugText[4] = data.XSign
+  DebugText[5] = data.YSign
+  DebugText[6] = data.Radius
+  
+  if data.MoveX >= data.Radius then --If the X position is bigger than the orbit circle
+    data.XSign = -1 --Inverts the orbit direction
+    data.YSign = -1 --Inverts the orbit direction
+  elseif data.MoveX <= (data.Radius * -1) then --If the X position is bigger than the orbit circle
+    data.XSign = 1 --Inverts the orbit direction
+    data.YSign = 1 --Inverts the orbit direction
+  end
+  
+  data.MoveX = data.MoveX + (data.XSign * 5) --Increase/Decrease X position by 5
+  data.MoveY = math.floor(math.sqrt(data.Radius^2 - data.MoveX^2) * data.YSign) --Circle formula multiplied by the Y orbit invertor (Above or below the player)
+  data.MoveY = data.MoveY - ((data.MoveY % 5) * data.YSign) --Rounds Y position down to the nearest 5
+  
+  knife.Position = Vector(player.Position.X + data.MoveX, player.Position.Y - 10 + data.MoveY) --Sets position of the dagger to the player's position plus it's X and Y orbit positions
+  sprite.Rotation = sprite.Rotation + 6 --Rotates the dagger sprite
+  
+  if knife.FrameCount == 66 then --If the dagger has been out for 60 ticks (About 2 seconds)
+    knife:Remove() --Remove the dagger
+  end
+end
+
 -----CALLBACKS-----
 
 Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, ExcaliburItem) --Use item callback, UseExcalibur function, Excalibur item
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE, Alternity.CloakAndDaggerEffect) --Post update callback, CloakAndDaggerEffect function
+Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE, Alternity.CADKnifeUpdate, CADKnife) --Familiar update callback, CADKnifeUpdate function, CADKnife familiar
 
 
 
