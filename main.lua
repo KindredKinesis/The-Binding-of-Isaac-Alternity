@@ -91,11 +91,20 @@ function Alternity:CADKnifeUpdate(knife)
   end
 end
 
+function Alternity:CADEntityTakeDamage(Entity,_,_,DamageSource,_)
+  local player = Isaac.GetPlayer(0)
+  
+  if DamageSource.Type == EntityType.ENTITY_FAMILIAR and DamageSource.Variant == CADKnife and Entity.HitPoints == 0 then
+    player:GetEffects():AddCollectibleEffect(CollectibleType.COLLECTIBLE_CAMO_UNDIES, false)
+  end
+end
+
 -----CALLBACKS-----
 
 Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, ExcaliburItem) --Use item callback, UseExcalibur function, Excalibur item
 Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE, Alternity.CloakAndDaggerEffect) --Post update callback, CloakAndDaggerEffect function
 Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE, Alternity.CADKnifeUpdate, CADKnife) --Familiar update callback, CADKnifeUpdate function, CADKnife familiar
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, Alternity.CADEntityTakeDamage) --Entity take damage callback, CADEntityTakeDamage function
 
 
 
