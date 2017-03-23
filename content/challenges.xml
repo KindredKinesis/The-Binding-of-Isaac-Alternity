@@ -1,10 +1,77 @@
 <challenges version="1">
-	<challenge name="Beam Physics" endstage="8" startingitems="358,118,221,68,120" roomfilter="4" difficulty="1" />
-	<challenge name="One Chance" playertype="10" endstage="8" startingitems="298,508,112,172,128" roomfilter="4" canshoot="false" difficulty="1" />
-	<challenge name="1000 Degree Knife" endstage="8" startingitems="329,114,257,289,256" roomfilter="4" difficulty="1" />
-	<challenge name="Rift Walker" playertype="15" endstage="10" startingitems="494,315,222,224" roomfilter="4" difficulty="1" />
-	<challenge name="Heavy Rain" playertype="5" endstage="11" altpath="true" startingitems="149,220,371" roomfilter="4" difficulty="1" />
-	<challenge name="Gorgon's Gaze" playertype="1" endstage="11" altpath="false" startingitems="68,152,244,110,159,226" startingtrinkets="26" roomfilter="4" difficulty="1" />
-	<challenge name="Death Metal" playertype="4" endstage="11" altpath="true" startingitems="237,201,229,206,503" roomfilter="4" difficulty="1" />
-	<challenge name="Over Shooting It" playertype="2" endstage="8" startingitems="71,71,71,71,71,71,71,71,20,4,368,369,32" roomfilter="4" difficulty="1" />
+	<challenge 
+		name="Beam Physics" 
+		endstage="8" 
+		startingitems="358,118,221,68,120" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="One Chance" 
+		playertype="10" 
+		endstage="8" 
+		startingitems="298,508,112,172,128" 
+		roomfilter="4" 
+		canshoot="false" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="1000 Degree Knife" 
+		endstage="8" 
+		startingitems="329,114,257,289,256" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="Rift Walker" 
+		playertype="15" 
+		endstage="10" 
+		startingitems="494,315,222,224" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="Heavy Rain" 
+		playertype="5" 
+		endstage="11" 
+		altpath="true" 
+		startingitems="149,220,371" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="Gorgon's Gaze" 
+		playertype="1" 
+		endstage="11" 
+		altpath="false" 
+		startingitems="68,152,244,110,159,226" 
+		startingtrinkets="26" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="Death Metal" 
+		playertype="4" 
+		endstage="11" 
+		altpath="true" 
+		startingitems="237,201,229,206,503" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="Eye Of The Swarm" 
+		playertype="2" 
+		endstage="8" 
+		startingitems="330,5,369,132" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
+	<challenge 
+		name="Fools' Gold" 
+		playertype="14" 
+		endstage="11" 
+		altpath="false" 
+		startingitems="429,109,74,295"
+		startingtrinkets="52"
+	/>
 </challenges>
