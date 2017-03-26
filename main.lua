@@ -47,12 +47,6 @@ function Alternity:CloakAndDaggerEffect()
   
   if playerdata.CloakAndDagger == 120 then --If Cloak and Dagger charge equals 60 (2 seconds or so)
     local knife = Isaac.Spawn(3,CADKnife,0,player.Position,Vector(0,0),player) --Spawns a dagger
-    local data = knife:GetData() --Gets the data for the dagger (Used to store entity specific variables)
-    data.MoveX = 0 --X Position
-    data.MoveY = 50 --Y Position
-    data.Radius = 50 --Radius of orbit circle
-    data.XSign = 1 --Used for orbit
-    data.YSign = 1 --Used for orbit
     knife.CollisionDamage = 10 --Damage of the dagger
     playerdata.CloakAndDagger = 0 --Resets the Cloak and Dagger charge
   end
@@ -65,28 +59,9 @@ function Alternity:CADKnifeUpdate(knife)
   local sprite = knife:GetSprite() --Gets the dagger's sprite
   local data = knife:GetData() --Gets the dagger's data (Used to store entity specific variables)
   
-  DebugText[2] = data.MoveX
-  DebugText[3] = data.MoveY
-  DebugText[4] = data.XSign
-  DebugText[5] = data.YSign
-  DebugText[6] = data.Radius
+  knife.Position = player.Position
   
-  if data.MoveX >= data.Radius then --If the X position is bigger than the orbit circle
-    data.XSign = -1 --Inverts the orbit direction
-    data.YSign = -1 --Inverts the orbit direction
-  elseif data.MoveX <= (data.Radius * -1) then --If the X position is bigger than the orbit circle
-    data.XSign = 1 --Inverts the orbit direction
-    data.YSign = 1 --Inverts the orbit direction
-  end
-  
-  data.MoveX = data.MoveX + (data.XSign * 5) --Increase/Decrease X position by 5
-  data.MoveY = math.floor(math.sqrt(data.Radius^2 - data.MoveX^2) * data.YSign) --Circle formula multiplied by the Y orbit invertor (Above or below the player)
-  data.MoveY = data.MoveY - ((data.MoveY % 5) * data.YSign) --Rounds Y position down to the nearest 5
-  
-  knife.Position = Vector(player.Position.X + data.MoveX, player.Position.Y - 10 + data.MoveY) --Sets position of the dagger to the player's position plus it's X and Y orbit positions
-  sprite.Rotation = sprite.Rotation + 6 --Rotates the dagger sprite
-  
-  if knife.FrameCount == 66 then --If the dagger has been out for 60 ticks (About 2 seconds)
+  if knife.FrameCount == 25 then --If the dagger has been out for 60 ticks (About 2 seconds)
     knife:Remove() --Remove the dagger
   end
 end
@@ -94,7 +69,7 @@ end
 function Alternity:CADEntityTakeDamage(Entity,_,_,DamageSource,_)
   local player = Isaac.GetPlayer(0)
   
-  if DamageSource.Type == EntityType.ENTITY_FAMILIAR and DamageSource.Variant == CADKnife and Entity.HitPoints == 0 then
+  if DamageSource.Type == EntityType.ENTITY_FAMILIAR and DamageSource.Variant == CADKnife and Entity.HitPoints <= 0 then
     player:GetEffects():AddCollectibleEffect(CollectibleType.COLLECTIBLE_CAMO_UNDIES, false)
   end
 end
