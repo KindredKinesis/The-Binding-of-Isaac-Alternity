@@ -1,100 +1,110 @@
-local Alternity = RegisterMod("Alternity",1); --Registers the mod under the name Alternity
-local DebugText = {}; --Not used in release
-
+local Alternity = RegisterMod("Alternity",1)
 ---------------
------ITEMS-----
+--<<<ITEMS>>>--
 ---------------
 
------VARIABLES-----
+---<<VARIABLES>>---
 
-local ExcaliburItem = Isaac.GetItemIdByName("Excalibur"); --Gets the item ID of Excalibur
-local CloakAndDaggerItem; --THIS NEEDS TO BE FILLED OUT
-local CADKnife = Isaac.GetEntityVariantByName("CloakDagger"); --Gets the variant of CloakDagger (Knife for Cloak and Dagger)
+local ExcaliburItem = Isaac.GetItemIdByName("Excalibur")
 
------FUNCTIONS-----
+---<<FUNCTIONS>>---
 
+----<EXCALIBUR>----
 function Alternity:UseExcalibur()
-  local player = Isaac.GetPlayer(0) --Gets the player
-  local giveitems = (player:GetMaxHearts() / 2) --Gets the amount of heart containers the player has
-  local removehearts = {-2, -4, -8, -10} --The amount of heart containers to be removed
-  local weapons = {CollectibleType.COLLECTIBLE_MOMS_RAZOR, CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY, CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER, CollectibleType.COLLECTIBLE_MOMS_KNIFE} --The items to add
+  local player = Isaac.GetPlayer(0)
+  local giveitems = (player:GetMaxHearts() / 2)
+  local removehearts = {-2, -4, -8, -10}
+  local weapons = {CollectibleType.COLLECTIBLE_MOMS_RAZOR, CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY, CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER, CollectibleType.COLLECTIBLE_MOMS_KNIFE}
   
-  if player:GetSoulHearts() == 0 and player:GetBlackHearts() == 0 then giveitems = giveitems - 1 end --If the player has no soul or black hearts then remove 1 from the giveitems count to prevent death
-  if giveitems > 4 then giveitems = 4 end --If there are more than the max amount of hearts, set it to the max (in this case 4)
+  if player:GetSoulHearts() == 0 and player:GetBlackHearts() == 0 then giveitems = giveitems - 1 end
+  if giveitems > 4 then giveitems = 4 end
   
-  if giveitems > 0 then --If the player has more than 0 free heart containers
-    for i = 1, giveitems do --For every heart container being given up
-      player:AddCollectible(weapons[i], 0, true) --Add the next item in the list
+  if giveitems > 0 then
+    for i = 1, giveitems do 
+      player:AddCollectible(weapons[i], 0, true)
     end
-    player:AddMaxHearts(removehearts[giveitems]) --Remove hearts equivalent to items gained
+    player:AddMaxHearts(removehearts[giveitems])
   end
   
-  player:RemoveCollectible(ExcaliburItem) --Remove Excalibur
+  player:RemoveCollectible(ExcaliburItem)
   
-  return true --Makes the player hold the item above their head
+  return true
 end
 
+---<<CALLBACKS>>---
+
+Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, ExcaliburItem)
+
+------------------
+--<<<PASSIVES>>>--
+------------------
+
+---<<VARIABLES>>---
+
+local CloakAndDaggerItem = Isaac.GetItemIdByName("Cloak and Dagger")
+local CloakDaggerVariant = Isaac.GetEntityVariantByName("CloakDagger")
+local CloakAndDaggerInvis = false
+
+---<<FUNCTIONS>>---
+
+----<CLOAK AND DAGGER>----
 function Alternity:CloakAndDaggerEffect()
-  local player = Isaac.GetPlayer(0) --Gets the player
-  local entities = Isaac.GetRoomEntities() --Gets every entity in the room
-  local playerdata = player:GetData() --Gets the player's data
+  local player = Isaac.GetPlayer(0)
+  local entities = Isaac.GetRoomEntities()
+  local playerdata = player:GetData()
   
-  if playerdata.CloakAndDagger == nil or player:GetFireDirection() == Direction.NO_DIRECTION then --If the player doesn't have a Cloak and Dagger charge or if they aren't shooting
-    playerdata.CloakAndDagger = 0 --Set the Cloak and Dagger charge to 0
-  else
-    playerdata.CloakAndDagger = playerdata.CloakAndDagger + 1 --Increase Cloak and Dagger charge by 1
+  if player:HasCollectible(CloakAndDaggerItem) then
+    if playerdata.CloakAndDagger == nil or player:GetFireDirection() == Direction.NO_DIRECTION then
+      playerdata.CloakAndDagger = 0
+    else
+      playerdata.CloakAndDagger = playerdata.CloakAndDagger + 1
+    end
+    
+    if playerdata.InvisTimeout == nil then
+      playerdata.InvisTimeout = 120
+    elseif playerdata.InvisTimeout <= 0 then
+      playerdata.InvisTimeout = 120
+      CloakAndDaggerInvis = false
+    end
+    
+    if CloakAndDaggerInvis == true then
+      player:GetEffects():AddCollectibleEffect(CollectibleType.COLLECTIBLE_CAMO_UNDIES,false)
+      playerdata.InvisTimeout = playerdata.InvisTimeout - 1
+    end
+    
+    if playerdata.CloakAndDagger == 150 then
+      local knife = Isaac.Spawn(3,CloakDaggerVariant,0,player.Position,Vector(0,0),player)
+      knife.CollisionDamage = 10
+      playerdata.CloakAndDagger = 0
+    end
   end
-  
-  if playerdata.CloakAndDagger == 120 then --If Cloak and Dagger charge equals 60 (2 seconds or so)
-    local knife = Isaac.Spawn(3,CADKnife,0,player.Position,Vector(0,0),player) --Spawns a dagger
-    knife.CollisionDamage = 10 --Damage of the dagger
-    playerdata.CloakAndDagger = 0 --Resets the Cloak and Dagger charge
-  end
-  
-  DebugText[1] = playerdata.CloakAndDagger .. "/120 for dagger"
 end
 
-function Alternity:CADKnifeUpdate(knife)
-  local player = Isaac.GetPlayer(0) --Gets the player
-  local sprite = knife:GetSprite() --Gets the dagger's sprite
-  local data = knife:GetData() --Gets the dagger's data (Used to store entity specific variables)
+function Alternity:CloakAndDaggerUpdate(knife)
+  local player = Isaac.GetPlayer(0)
+  local data = knife:GetData()
   
   knife.Position = player.Position
   
-  if knife.FrameCount == 25 then --If the dagger has been out for 60 ticks (About 2 seconds)
-    knife:Remove() --Remove the dagger
+  if knife.FrameCount == 25 then
+    knife:Remove()
   end
 end
 
-function Alternity:CADEntityTakeDamage(Entity,_,_,DamageSource,_)
+function Alternity:CloakAndDaggerDamage(Ent,DamageAmount,_,DamageSource,_)
   local player = Isaac.GetPlayer(0)
   
-  if DamageSource.Type == EntityType.ENTITY_FAMILIAR and DamageSource.Variant == CADKnife and Entity.HitPoints <= 0 then
-    player:GetEffects():AddCollectibleEffect(CollectibleType.COLLECTIBLE_CAMO_UNDIES, false)
+  if player:HasCollectible(CloakAndDaggerItem) then
+    if DamageSource.Type == 3 and DamageSource.Variant == CloakDaggerVariant then
+      if DamageAmount >= Ent.HitPoints then
+        CloakAndDaggerInvis = true
+      end
+    end
   end
 end
 
------CALLBACKS-----
+---<<CALLBACKS>>---
 
-Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, ExcaliburItem) --Use item callback, UseExcalibur function, Excalibur item
-Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE, Alternity.CloakAndDaggerEffect) --Post update callback, CloakAndDaggerEffect function
-Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE, Alternity.CADKnifeUpdate, CADKnife) --Familiar update callback, CADKnifeUpdate function, CADKnife familiar
-Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, Alternity.CADEntityTakeDamage) --Entity take damage callback, CADEntityTakeDamage function
-
-
-
----------------
------DEBUG-----
----------------
-
------FUNCTIONS-----
-
-function Alternity:Debug()
-  for i = 1, #DebugText do
-    Isaac.RenderText(DebugText[i], 50, 30 + (20 * i), 255, 0, 0, 255)
-  end
-end
-
------CALLBACKS-----
-
-Alternity:AddCallback(ModCallbacks.MC_POST_RENDER, Alternity.Debug)
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.CloakAndDaggerEffect)
+Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE,Alternity.CloakAndDaggerUpdate,CloakDaggerVariant)
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.CloakAndDaggerDamage)

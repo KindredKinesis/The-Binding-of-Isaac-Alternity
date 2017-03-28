@@ -1,3 +1,4 @@
 <items gfxroot="gfx/items/" version="1">
 	<active name="Excalibur" description="Free your blade's destiny!" maxcharges="0" gfx="collectibles_excalibur.png"/>
+	<passive name="Cloak and Dagger" description="Slash into the night." gfx="collectibles_cloakanddagger.png"/>
 </items>
