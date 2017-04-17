@@ -1,4 +1,5 @@
 local Alternity = RegisterMod("Alternity",1)
+
 ---------------
 --<<<ITEMS>>>--
 ---------------
@@ -7,45 +8,34 @@ local Alternity = RegisterMod("Alternity",1)
 
 local ExcaliburItem = Isaac.GetItemIdByName("Excalibur")
 
----<<FUNCTIONS>>---
-
-----<EXCALIBUR>----
-function Alternity:UseExcalibur()
-  local player = Isaac.GetPlayer(0)
-  local giveitems = (player:GetMaxHearts() / 2)
-  local removehearts = {-2, -4, -8, -10}
-  local weapons = {CollectibleType.COLLECTIBLE_MOMS_RAZOR, CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY, CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER, CollectibleType.COLLECTIBLE_MOMS_KNIFE}
-  
-  if player:GetSoulHearts() == 0 and player:GetBlackHearts() == 0 then giveitems = giveitems - 1 end
-  if giveitems > 4 then giveitems = 4 end
-  
-  if giveitems > 0 then
-    for i = 1, giveitems do 
-      player:AddCollectible(weapons[i], 0, true)
-    end
-    player:AddMaxHearts(removehearts[giveitems])
-  end
-  
-  player:RemoveCollectible(ExcaliburItem)
-  
-  return true
-end
-
----<<CALLBACKS>>---
-
-Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, ExcaliburItem)
-
-------------------
---<<<PASSIVES>>>--
-------------------
-
----<<VARIABLES>>---
-
 local CloakAndDaggerItem = Isaac.GetItemIdByName("Cloak and Dagger")
 local CloakDaggerVariant = Isaac.GetEntityVariantByName("CloakDagger")
 local CloakAndDaggerInvis = false
 
 ---<<FUNCTIONS>>---
+
+----<EXCALIBUR>----
+function Alternity:UseExcalibur()
+  local player = Isaac.GetPlayer(0)
+  
+  if player:GetMaxHearts() > 2 then
+    if player:GetMaxHearts() == 4 then
+      player:AddCollectible(CloakAndDaggerItem,0,true)
+    elseif player:GetMaxHearts() == 6 then
+      player:AddCollectible(CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY,0,true)
+    elseif player:GetMaxHearts() == 8 then
+      player:AddCollectible(CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER,0,true)
+    elseif player:GetMaxHearts() >= 10 then
+      player:AddCollectible(CollectibleType.COLLECTIBLE_MOMS_KNIFE,0,true)
+    end
+    
+    player:RemoveCollectible(ExcaliburItem)
+    
+    return true
+  else
+    player:AnimateSad()
+  end
+end
 
 ----<CLOAK AND DAGGER>----
 function Alternity:CloakAndDaggerEffect()
@@ -104,6 +94,8 @@ function Alternity:CloakAndDaggerDamage(Ent,DamageAmount,_,DamageSource,_)
 end
 
 ---<<CALLBACKS>>---
+
+Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, ExcaliburItem)
 
 Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.CloakAndDaggerEffect)
 Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE,Alternity.CloakAndDaggerUpdate,CloakDaggerVariant)
