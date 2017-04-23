@@ -2,7 +2,7 @@
 	<Info CreatedBy="Unknown" CreatedOn="12/6/2016 2:46:52 PM" Version="3" Fps="30"/>
 	<Content>
 		<Spritesheets>
-			<Spritesheet Path="TitleMenu.png" Id="0"/>
+			<Spritesheet Path="titlemenu.png" Id="0"/>
 			<Spritesheet Path="splashes.png" Id="1"/>
 		</Spritesheets>
 		<Layers>
