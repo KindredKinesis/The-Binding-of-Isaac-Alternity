@@ -101,7 +101,7 @@ function Alternity:AlphaCrestEffect(Ent,DamageAmount,_,DamageSource,_)
   local player = Isaac.GetPlayer(0)
   local entities = Isaac.GetRoomEntities()
   
-  if player:HasCollectible(AlphaCrestItem) and Ent:IsEnemy() and Ent.Type ~= EntityType.ENTITY_FIREPLACE then
+  if player:HasCollectible(AlphaCrestItem) and Ent:IsActiveEnemy(false) then
     if AlphaCrestActive then
       Ent.HitPoints = Ent.HitPoints - (DamageAmount * 2)
       return true
@@ -125,7 +125,7 @@ function Alternity:AlphaCrestActivate()
     local totalenemies = 0
     
     for i = 1, #entities do
-      if entities[i]:IsEnemy() and entities[i].Type ~= EntityType.ENTITY_FIREPLACE then
+      if entities[i]:IsActiveEnemy(false) then
         totalenemies = totalenemies + 1
       end
     end
@@ -137,7 +137,7 @@ function Alternity:AlphaCrestActivate()
     local currenemies = 0
     
     for i = 1, #entities do
-      if entities[i]:IsEnemy() and entities[i].Type ~= EntityType.ENTITY_FIREPLACE then
+      if entities[i]:IsActiveEnemy() then
         currenemies = currenemies + 1
       end
     end
