@@ -74,4 +74,13 @@
 		startingitems="429,109,74,295"
 		startingtrinkets="52"
 	/>
+	<challenge 
+		name="Sadomasochism" 
+		playertype="7" 
+		endstage="11" 
+		altpath="true" 
+		startingitems="238,239,157,219,225" 
+		roomfilter="4" 
+		difficulty="1" 
+	/>
 </challenges>
