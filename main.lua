@@ -102,7 +102,7 @@ function Alternity:CloakAndDaggerEffect()
       playerdata.InvisTimeout = playerdata.InvisTimeout - 1
     end
     
-    if playerdata.CloakAndDagger == 150 then
+    if playerdata.CloakAndDagger == 90 then
       local knife = Isaac.Spawn(EntityType.ENTITY_FAMILIAR,ItemVars.CloakAndDagger.Variant,0,player.Position,Vector(0,0),player)
       knife.CollisionDamage = 10
       playerdata.CloakAndDagger = 0
@@ -115,11 +115,16 @@ Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.CloakAndDaggerEffect
 function Alternity:CloakAndDaggerUpdate(knife)
   local player = Isaac.GetPlayer(0)
   local data = knife:GetData()
+  local sprite = knife:GetSprite()
   
   knife.Position = player.Position
   
-  if knife.FrameCount == 25 then
+  if sprite:IsFinished("Spin") then
     knife:Remove()
+  end
+  
+  if knife.FrameCount > 10 and not sprite:IsPlaying("Spin") then
+    sprite:Play("Spin",true)
   end
 end
 
