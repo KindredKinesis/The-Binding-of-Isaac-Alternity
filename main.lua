@@ -9,7 +9,8 @@ Alternity.Items = {
   Passives = {
     CLOAK_AND_DAGGER = Isaac.GetItemIdByName("Cloak and Dagger"),
     ALPHA_CREST = Isaac.GetItemIdByName("Alpha Crest"),
-    GOLDEN_FLEECE = Isaac.GetItemIdByName("Golden Fleece")
+    GOLDEN_FLEECE = Isaac.GetItemIdByName("Golden Fleece"),
+    TIME_BOMBS = Isaac.GetItemIdByName("Time Bombs")
   },
   Actives = {
     EXCALIBUR = Isaac.GetItemIdByName("Excalibur")
@@ -248,3 +249,26 @@ function Alternity:GoldenFleeceEffect(entity, amount, damageflag, source, countd
 end
 
 Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, Alternity.GoldenFleeceEffect)
+
+---<<TIME BOMBS>>---
+function Alternity:TimeBombsExplode()
+  local player = Isaac.GetPlayer(0)
+  local ents = Isaac.GetRoomEntities()
+  
+  for i = 1, #ents do
+    if ents[i].Type == EntityType.ENTITY_BOMBDROP and ents[i].SpawnerType == EntityType.ENTITY_PLAYER then
+      ents[i]:SetColor(Color(0.5,0.5,1,1,0,0,0),-1,1,false,false)
+      
+      if ents[i]:GetSprite():IsPlaying("Explode") then
+        for u = 1, #ents do
+          if ents[u]:IsActiveEnemy(false) then
+            ents[u]:AddFreeze(EntityRef(player),150)
+            ents[u]:SetColor(Color(0.7,0.7,1,1,0,0,0),150,1,true,false)
+          end
+        end
+      end
+    end
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.TimeBombsExplode)
