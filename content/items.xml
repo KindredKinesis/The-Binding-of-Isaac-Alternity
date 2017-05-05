@@ -3,6 +3,7 @@
 	<passive name="Alpha Crest" description="First" gfx="collectibles_alphacrest.png"/>
 	<passive name="Golden Fleece" description="Robes of Prosperity" gfx="collectibles_goldenfleece.png"/>
 	<passive name="Time Bombs" description="Temporal Blast +5 bombs" gfx="collectibles_timebombs.png" bombs="5"/>
+	<passive name="Azazel's Lost Horn" description="Chain Reaction" gfx="collectibles_azazelslosthorn.png"/>
 	
 	<active name="Excalibur" description="Free your blade's destiny!" maxcharges="0" gfx="collectibles_excalibur.png"/>
 </items>

@@ -10,7 +10,8 @@ Alternity.Items = {
     CLOAK_AND_DAGGER = Isaac.GetItemIdByName("Cloak and Dagger"),
     ALPHA_CREST = Isaac.GetItemIdByName("Alpha Crest"),
     GOLDEN_FLEECE = Isaac.GetItemIdByName("Golden Fleece"),
-    TIME_BOMBS = Isaac.GetItemIdByName("Time Bombs")
+    TIME_BOMBS = Isaac.GetItemIdByName("Time Bombs"),
+    AZAZELS_LOST_HORN = Isaac.GetItemIdByName("Azazel's Lost Horn")
   },
   Actives = {
     EXCALIBUR = Isaac.GetItemIdByName("Excalibur")
@@ -23,7 +24,7 @@ Alternity.Items = {
 
 Alternity.ItemVariables = {
   CloakAndDagger = {
-      Variant = Isaac.GetEntityVariantByName("CloakDagger"),
+      Variant = Isaac.GetEntityVariantByName("Cloak Dagger"),
       Invisible = false
   },
   AlphaCrest = {
@@ -32,6 +33,11 @@ Alternity.ItemVariables = {
   },
   GoldenFleece = {
     invulnerabilityTimeOut = 0
+  },
+  AzazelsLostHorn = {
+    SwirlType = Isaac.GetEntityTypeByName("Brim Swirl"),
+    SwirlVariant = Isaac.GetEntityVariantByName("Brim Swirl"),
+    Swirls = {}
   }
 }
 
@@ -255,15 +261,17 @@ function Alternity:TimeBombsExplode()
   local player = Isaac.GetPlayer(0)
   local ents = Isaac.GetRoomEntities()
   
-  for i = 1, #ents do
-    if ents[i].Type == EntityType.ENTITY_BOMBDROP and ents[i].SpawnerType == EntityType.ENTITY_PLAYER then
-      ents[i]:SetColor(Color(0.5,0.5,1,1,0,0,0),-1,1,false,false)
-      
-      if ents[i]:GetSprite():IsPlaying("Explode") then
-        for u = 1, #ents do
-          if ents[u]:IsActiveEnemy(false) then
-            ents[u]:AddFreeze(EntityRef(player),150)
-            ents[u]:SetColor(Color(0.7,0.7,1,1,0,0,0),150,1,true,false)
+  if player:HasCollectible(Passive.TIME_BOMBS) then
+    for i = 1, #ents do
+      if ents[i].Type == EntityType.ENTITY_BOMBDROP and ents[i].SpawnerType == EntityType.ENTITY_PLAYER then
+        ents[i]:SetColor(Color(0.5,0.5,1,1,0,0,0),-1,1,false,false)
+        
+        if ents[i]:GetSprite():IsPlaying("Explode") then
+          for u = 1, #ents do
+            if ents[u]:IsActiveEnemy(false) then
+              ents[u]:AddFreeze(EntityRef(player),150)
+              ents[u]:SetColor(Color(0.7,0.7,1,1,0,0,0),150,1,true,false)
+            end
           end
         end
       end
@@ -272,3 +280,50 @@ function Alternity:TimeBombsExplode()
 end
 
 Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.TimeBombsExplode)
+
+---<<AZAZEL'S LOST HORN>>---
+function Alternity:LostHornSpawnSwirls(Ent,DmgAmount,DmgFlags,DmgSource,CountdownFrames)
+  local player = Isaac.GetPlayer(0)
+  local swirls = ItemVars.AzazelsLostHorn.Swirls
+  
+  if player:HasCollectible(Passive.AZAZELS_LOST_HORN) then
+    if Ent.HitPoints - DmgAmount <= 0 and Ent:IsActiveEnemy(false) then
+      if #swirls < 2 then
+        local swirl = Isaac.Spawn(ItemVars.AzazelsLostHorn.SwirlType,ItemVars.AzazelsLostHorn.SwirlVariant,0,Ent.Position,Vector(0,0),player)
+        swirl:GetSprite():Play("Idle",true)
+        table.insert(swirls,swirl)
+      end
+    end
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.LostHornSpawnSwirls)
+
+function Alternity:LostHornChain()
+  local player = Isaac.GetPlayer(0)
+  local swirls = ItemVars.AzazelsLostHorn.Swirls
+  
+  if player:HasCollectible(Passive.AZAZELS_LOST_HORN) then
+    for i = 1, #swirls do
+      if swirls[i]:GetSprite():IsFinished("Idle") then
+        swirls[i]:Remove()
+        table.remove(swirls,i)
+        break
+      end
+    end
+    
+    if #swirls == 2 then
+      local brim = EntityLaser.ShootAngle(1,swirls[1].Position,(swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(),60,Vector(0,0),player)
+      brim.DisableFollowParent = true
+      brim:SetMaxDistance(swirls[1].Position:Distance(swirls[2].Position))
+      brim.CollisionDamage = player.Damage
+      
+      swirls[1]:GetSprite():Play("Idle",true)
+      swirls[2]:GetSprite():Play("Idle",true)
+      
+      ItemVars.AzazelsLostHorn.Swirls = {swirls[2]}
+    end
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.LostHornChain)
