@@ -26,7 +26,8 @@ Alternity.ItemVariables = {
       Invisible = false
   },
   AlphaCrest = {
-    Active = false
+    Active = false,
+    SymbolSprite = Sprite()
   },
   GoldenFleece = {
     invulnerabilityTimeOut = 0
@@ -40,6 +41,8 @@ local Familiar = Alternity.Items.Familiars
 local Trinket = Alternity.Items.Trinkets
 
 local ItemVars = Alternity.ItemVariables
+
+ItemVars.AlphaCrest.SymbolSprite:Load("gfx/effects/effect_alphacrest.anm2",true)
 
 -----------------
 --<<<ACTIVES>>>--
@@ -142,7 +145,7 @@ function Alternity:AlphaCrestEffect(Ent,DamageAmount,_,DamageSource,_)
   local player = Isaac.GetPlayer(0)
   local entities = Isaac.GetRoomEntities()
   
-  if player:HasCollectible(Passive.ALPHA_CREST) and Ent:IsActiveEnemy(false) then
+  if player:HasCollectible(Passive.ALPHA_CREST) and Ent:IsVulnerableEnemy() then
     if ItemVars.AlphaCrest.Active then
       Ent.HitPoints = Ent.HitPoints - (DamageAmount * 2)
       return true
@@ -193,6 +196,28 @@ end
 
 Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.AlphaCrestActivate)
 
+function Alternity:RenderAlphaCrest()
+  local sprite = ItemVars.AlphaCrest.SymbolSprite
+  local room = Game():GetRoom()
+  local player = Isaac.GetPlayer(0)
+  
+  if not room:IsClear() and player:HasCollectible(Passive.ALPHA_CREST) and room:GetFrameCount() > 10 then
+    if ItemVars.AlphaCrest.Active then
+      if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
+        sprite:Play("FadeIn",true)
+      end
+    else
+      if sprite:IsFinished("FadeIn") then
+        sprite:Play("FadeOut",true)
+      end
+    end
+    
+    sprite:Update()
+    sprite:Render(room:WorldToScreenPosition(player.Position),Vector(0,0),Vector(0,0))
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_POST_RENDER,Alternity.RenderAlphaCrest)
 
 ---<<GOLDEN FLEECE>>---
 function Alternity:GoldenFleeceEffect(entity, amount, damageflag, source, countdownframes)
