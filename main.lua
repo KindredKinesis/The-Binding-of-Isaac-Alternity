@@ -264,7 +264,16 @@ function Alternity:TimeBombsExplode()
   if player:HasCollectible(Passive.TIME_BOMBS) then
     for i = 1, #ents do
       if ents[i].Type == EntityType.ENTITY_BOMBDROP and ents[i].SpawnerType == EntityType.ENTITY_PLAYER then
-        ents[i]:SetColor(Color(0.5,0.5,1,1,0,0,0),-1,1,false,false)
+        local sprite = ents[i]:GetSprite()
+        local path = "gfx/items/pick ups/pickup_timebombs.anm2"
+        
+        if sprite:IsPlaying("Pulse") and sprite:GetFilename() ~= path then
+          sprite:Load(path,true)
+          
+          if not sprite:IsPlaying("Pulse") then
+            sprite:Play("Pulse",true)
+          end
+        end
         
         if ents[i]:GetSprite():IsPlaying("Explode") then
           for u = 1, #ents do
