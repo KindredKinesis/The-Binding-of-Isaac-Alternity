@@ -37,6 +37,8 @@ Alternity.ItemVariables = {
   AzazelsLostHorn = {
     SwirlType = Isaac.GetEntityTypeByName("Brim Swirl"),
     SwirlVariant = Isaac.GetEntityVariantByName("Brim Swirl"),
+    HornCostume = Isaac.GetCostumeIdByPath("gfx/characters/costumes/costume_azazelslosthorn.anm2"),
+    CostumeAdded = false,
     Swirls = {}
   }
 }
@@ -50,6 +52,22 @@ local Trinket = Alternity.Items.Trinkets
 local ItemVars = Alternity.ItemVariables
 
 ItemVars.AlphaCrest.SymbolSprite:Load("gfx/effects/effect_alphacrest.anm2",true)
+
+-----------------------
+--<<<MISCELLANEOUS>>>--
+-----------------------
+
+function Alternity:ResetVariables(FromSave)
+  if not FromSave then
+    ItemVars.CloakAndDagger.Invisible = false
+    ItemVars.AlphaCrest.Active = false
+    ItemVars.GoldenFleece.invulnerabilityTimeOut = 0
+    ItemVars.AzazelsLostHorn.CostumeAdded = false
+    ItemVars.AzazelsLostHorn.Swirls = {}
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_POST_GAME_STARTED,Alternity.ResetVariables)
 
 -----------------
 --<<<ACTIVES>>>--
@@ -299,6 +317,8 @@ function Alternity:LostHornSpawnSwirls(Ent,DmgAmount,DmgFlags,DmgSource,Countdow
     if Ent.HitPoints - DmgAmount <= 0 and Ent:IsActiveEnemy(false) then
       if #swirls < 2 then
         local swirl = Isaac.Spawn(ItemVars.AzazelsLostHorn.SwirlType,ItemVars.AzazelsLostHorn.SwirlVariant,0,Ent.Position,Vector(0,0),player)
+        swirl.SpriteScale = Vector(0.5,0.5)
+        swirl:SetColor(player.TearColor,-1,1,false,false)
         swirl:GetSprite():Play("Idle",true)
         table.insert(swirls,swirl)
       end
@@ -313,19 +333,31 @@ function Alternity:LostHornChain()
   local swirls = ItemVars.AzazelsLostHorn.Swirls
   
   if player:HasCollectible(Passive.AZAZELS_LOST_HORN) then
+    if Game():GetRoom():GetFrameCount() <= 1 then
+      ItemVars.AzazelsLostHorn.Swirls = {}
+    end
+    
+    if not ItemVars.AzazelsLostHorn.CostumeAdded then
+      ItemVars.AzazelsLostHorn.CostumeAdded = true
+      player:AddNullCostume(ItemVars.AzazelsLostHorn.HornCostume)
+    end
+    
     for i = 1, #swirls do
       if swirls[i]:GetSprite():IsFinished("Idle") then
         swirls[i]:Remove()
-        table.remove(swirls,i)
+        table.remove(ItemVars.AzazelsLostHorn.Swirls,i)
         break
       end
     end
     
     if #swirls == 2 then
-      local brim = EntityLaser.ShootAngle(1,swirls[1].Position,(swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(),60,Vector(0,0),player)
+      local brim = EntityLaser.ShootAngle(1,swirls[1].Position,(swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(),45,Vector(0,0),player)
       brim.DisableFollowParent = true
       brim:SetMaxDistance(swirls[1].Position:Distance(swirls[2].Position))
-      brim.CollisionDamage = player.Damage
+      brim.CollisionDamage = player.Damage / 3
+      brim.SpriteScale = Vector(0.6,1)
+      brim.TearFlags = player.TearFlags
+      brim:SetColor(player.TearColor,-1,1,false,false)
       
       swirls[1]:GetSprite():Play("Idle",true)
       swirls[2]:GetSprite():Play("Idle",true)
