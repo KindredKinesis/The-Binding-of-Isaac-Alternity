@@ -296,8 +296,8 @@ function Alternity:TimeBombsExplode()
         if ents[i]:GetSprite():IsPlaying("Explode") then
           for u = 1, #ents do
             if ents[u]:IsActiveEnemy(false) then
-              ents[u]:AddFreeze(EntityRef(player),150)
-              ents[u]:SetColor(Color(0.7,0.7,1,1,0,0,0),150,1,true,false)
+              ents[u]:AddFreeze(EntityRef(player),90)
+              ents[u]:SetColor(Color(0.4,0.4,1,1,0,0,0),90,1,false,false)
             end
           end
         end
