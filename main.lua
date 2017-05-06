@@ -116,9 +116,9 @@ function Alternity:CloakAndDaggerEffect()
     end
     
     if playerdata.InvisTimeout == nil then
-      playerdata.InvisTimeout = 120
+      playerdata.InvisTimeout = 90
     elseif playerdata.InvisTimeout <= 0 then
-      playerdata.InvisTimeout = 120
+      playerdata.InvisTimeout = 90
       ItemVars.CloakAndDagger.Invisible = false
     end
     
