@@ -1,5 +1,4 @@
 local Alternity = RegisterMod("Alternity",1)
-local alphaMod
 
 -------------------
 --<<<FRAMEWORK>>>--
@@ -7,10 +6,20 @@ local alphaMod
 
 ---<<TABLES>>---
 Alternity.Items = {
-  Passives = {},
-  Actives = {},
-  Familiars = {},
-  Trinkets = {}
+  Passives = {
+    CLOAK_AND_DAGGER = Isaac.GetItemIdByName("Cloak and Dagger"),
+    ALPHA_CREST = Isaac.GetItemIdByName("Alpha Crest"),
+    GOLDEN_FLEECE = Isaac.GetItemIdByName("Golden Fleece"),
+    TIME_BOMBS = Isaac.GetItemIdByName("Time Bombs"),
+    AZAZELS_LOST_HORN = Isaac.GetItemIdByName("Azazel's Lost Horn")
+  },
+  Actives = {
+    EXCALIBUR = Isaac.GetItemIdByName("Excalibur")
+  },
+  Familiars = {
+  },
+  Trinkets = {
+  }
 }
 
 Alternity.ItemVariables = {
@@ -29,6 +38,7 @@ Alternity.ItemVariables = {
     SwirlType = Isaac.GetEntityTypeByName("Brim Swirl"),
     SwirlVariant = Isaac.GetEntityVariantByName("Brim Swirl"),
     HornCostume = Isaac.GetCostumeIdByPath("gfx/characters/costumes/costume_azazelslosthorn.anm2"),
+    CostumeAdded = false,
     Swirls = {}
   }
 }
@@ -47,86 +57,24 @@ ItemVars.AlphaCrest.SymbolSprite:Load("gfx/effects/effect_alphacrest.anm2",true)
 --<<<MISCELLANEOUS>>>--
 -----------------------
 
-local function start()
-  --Start function
-  alphaMod = AlphaAPI.registerMod(Alternity)
-
-  Alternity.SetupItems()
-  Alternity.SetupFamiliars()
-
-  alphaMod:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.EntityDamage)
-end
-
-function Alternity.SetupItems()
-  --Cloak and Dagger--
-  Passive.CLOAK_AND_DAGGER = alphaMod:registerItem("Cloak and Dagger", nil)
-  --Alpha Crest--
-  Passive.ALPHA_CREST = alphaMod:registerItem("Alpha Crest", nil)
-  Passive.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.AlphaCrestActivate)
-  Alternity:AddCallback(ModCallbacks.MC_POST_RENDER,Alternity.RenderAlphaCrest)
-  --Golden Fleece--
-  Passive.GOLDEN_FLEECE = alphaMod:registerItem("Golden Fleece", nil)
-  --Time Bombs--
-  Passive.TIME_BOMBS = alphaMod:registerItem("Time Bombs", nil)
-  Passive.TIME_BOMBS:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.TimeBombsExplode)
-  --Azazel's Lost Horn--
-  Passive.AZAZELS_LOST_HORN = alphaMod:registerItem("Azazel's Lost Horn", ItemVars.AzazelsLostHorn.HornCostume)
-  --Excalibur--
-  Active.EXCALIBUR = alphaMod:registerItem("Excalibur", nil)
-  Active.EXCALIBUR:addCallback(AlphaAPI.Callbacks.ITEM_USE, Alternity.UseExcalibur)
-end
-
-function Alternity.SetupFamiliars()
-  -- Knife and swirl here
-end
-
 function Alternity:ResetVariables(FromSave)
   if not FromSave then
     ItemVars.CloakAndDagger.Invisible = false
     ItemVars.AlphaCrest.Active = false
     ItemVars.GoldenFleece.invulnerabilityTimeOut = 0
+    ItemVars.AzazelsLostHorn.CostumeAdded = false
     ItemVars.AzazelsLostHorn.Swirls = {}
   end
 end
 
 Alternity:AddCallback(ModCallbacks.MC_POST_GAME_STARTED,Alternity.ResetVariables)
 
---On Entity Take Damage
-function Alternity.EntityDamage(entity, amount, damageflag, source, countdownframes)
-  local player = Isaac.GetPlayer(0)
-
-  --Golden Fleece--
-  if entity.Type == EntityType.ENTITY_PLAYER and player:HasCollectible(Passive.GOLDEN_FLEECE.id) then
-    chance = math.min(30, player:GetNumCoins()) * 0.87
-    chance = chance + math.max(0, player:GetNumCoins() - 30) * 0.1
-    
-    if math.random(1, 100) < chance then
-      ItemVars.GoldenFleece.invulnerabilityTimeOut = Game():GetFrameCount() + 6
-      player:SetColor(Color(1,1,0,1,0,0,0), 10, 1, true, false)
-    end
-    
-    if Game():GetFrameCount() <= ItemVars.GoldenFleece.invulnerabilityTimeOut then
-      return false
-    else
-      ItemVars.GoldenFleece.invulnerabilityTimeOut = -1
-    end
-  end
-
-  --Alpha Crest--
-  if player:HasCollectible(Passive.ALPHA_CREST.id) and entity:IsVulnerableEnemy() then
-    if ItemVars.AlphaCrest.Active then
-      entity.HitPoints = entity.HitPoints - (amount * 2)
-      return true
-    end
-  end
-end
-
 -----------------
 --<<<ACTIVES>>>--
 -----------------
 
 ---<<EXCALIBUR>>---
-function Alternity.UseExcalibur()
+function Alternity:UseExcalibur()
   local player = Isaac.GetPlayer(0)
   
   if player:GetMaxHearts() > 2 then
@@ -140,7 +88,7 @@ function Alternity.UseExcalibur()
       player:AddCollectible(CollectibleType.COLLECTIBLE_MOMS_KNIFE,0,true)
     end
     
-    player:RemoveCollectible(Active.EXCALIBUR.id)
+    player:RemoveCollectible(Active.EXCALIBUR)
     
     return true
   else
@@ -148,12 +96,14 @@ function Alternity.UseExcalibur()
   end
 end
 
+Alternity:AddCallback(ModCallbacks.MC_USE_ITEM, Alternity.UseExcalibur, Active.EXCALIBUR)
+
 ------------------
 --<<<PASSIVES>>>--
 ------------------
 
 ---<<CLOAK AND DAGGER>>---
-function Alternity.CloakAndDaggerEffect()
+function Alternity:CloakAndDaggerEffect()
   local player = Isaac.GetPlayer(0)
   local entities = Isaac.GetRoomEntities()
   local playerdata = player:GetData()
@@ -185,7 +135,7 @@ function Alternity.CloakAndDaggerEffect()
   end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.CloakAndDaggerEffect)
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.CloakAndDaggerEffect)
 
 function Alternity:CloakAndDaggerUpdate(knife)
   local player = Isaac.GetPlayer(0)
@@ -203,7 +153,7 @@ function Alternity:CloakAndDaggerUpdate(knife)
   end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE,Alternity.CloakAndDaggerUpdate,ItemVars.CloakAndDagger.Variant)
+Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE,Alternity.CloakAndDaggerUpdate,ItemVars.CloakAndDagger.Variant)
 
 function Alternity:CloakAndDaggerDamage(Ent,DamageAmount,DamageFlags,DamageSource,CountdownFrames)
   local player = Isaac.GetPlayer(0)
@@ -217,20 +167,33 @@ function Alternity:CloakAndDaggerDamage(Ent,DamageAmount,DamageFlags,DamageSourc
   end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.CloakAndDaggerDamage)
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.CloakAndDaggerDamage)
 
 
 ---<<ALPHA CREST>>---
+function Alternity:AlphaCrestEffect(Ent,DamageAmount,_,DamageSource,_)
+  local player = Isaac.GetPlayer(0)
+  local entities = Isaac.GetRoomEntities()
+  
+  if player:HasCollectible(Passive.ALPHA_CREST) and Ent:IsVulnerableEnemy() then
+    if ItemVars.AlphaCrest.Active then
+      Ent.HitPoints = Ent.HitPoints - (DamageAmount * 2)
+      return true
+    end
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.AlphaCrestEffect)
+
 function Alternity:AlphaCrestActivate()
   local player = Isaac.GetPlayer(0)
   local entities = Isaac.GetRoomEntities()
   local room = Game():GetLevel():GetCurrentRoom()
   local data = player:GetData()
   
-  if player:HasCollectible(Passive.ALPHA_CREST.id) then
+  if player:HasCollectible(Passive.ALPHA_CREST) then
     if room:GetFrameCount() == 1 then
       data.AlphaCount = 0
-      Isaac.DebugString("prevented")
     end
     
     local totalenemies = 0
@@ -240,8 +203,7 @@ function Alternity:AlphaCrestActivate()
         totalenemies = totalenemies + 1
       end
     end
-
-
+    
     if totalenemies > data.AlphaCount then
       data.AlphaCount = totalenemies
     end
@@ -262,12 +224,14 @@ function Alternity:AlphaCrestActivate()
   end
 end
 
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.AlphaCrestActivate)
+
 function Alternity:RenderAlphaCrest()
   local sprite = ItemVars.AlphaCrest.SymbolSprite
   local room = Game():GetRoom()
   local player = Isaac.GetPlayer(0)
   
-  if not room:IsClear() and player:HasCollectible(Passive.ALPHA_CREST.id) and room:GetFrameCount() > 10 then
+  if not room:IsClear() and player:HasCollectible(Passive.ALPHA_CREST) and room:GetFrameCount() > 10 then
     if ItemVars.AlphaCrest.Active then
       if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
         sprite:Play("FadeIn",true)
@@ -283,12 +247,39 @@ function Alternity:RenderAlphaCrest()
   end
 end
 
+Alternity:AddCallback(ModCallbacks.MC_POST_RENDER,Alternity.RenderAlphaCrest)
+
+---<<GOLDEN FLEECE>>---
+function Alternity:GoldenFleeceEffect(entity, amount, damageflag, source, countdownframes)
+  local player = Isaac.GetPlayer(0)
+  
+  if entity.Type == EntityType.ENTITY_PLAYER then
+    if player:HasCollectible(Passive.GOLDEN_FLEECE) then
+      chance = math.min(30, player:GetNumCoins()) * 0.87
+      chance = chance + math.max(0, player:GetNumCoins() - 30) * 0.1
+      
+      if math.random(1, 100) < chance then
+        ItemVars.GoldenFleece.invulnerabilityTimeOut = Game():GetFrameCount() + 6
+        player:SetColor(Color(1,1,0,1,0,0,0), 10, 1, true, false)
+      end
+      
+      if Game():GetFrameCount() <= ItemVars.GoldenFleece.invulnerabilityTimeOut then
+        return false
+      else
+        ItemVars.GoldenFleece.invulnerabilityTimeOut = -1
+      end
+    end
+  end
+end
+
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG, Alternity.GoldenFleeceEffect)
+
 ---<<TIME BOMBS>>---
-function Alternity.TimeBombsExplode()
+function Alternity:TimeBombsExplode()
   local player = Isaac.GetPlayer(0)
   local ents = Isaac.GetRoomEntities()
   
-  if player:HasCollectible(Passive.TIME_BOMBS.id) then
+  if player:HasCollectible(Passive.TIME_BOMBS) then
     for i = 1, #ents do
       if ents[i].Type == EntityType.ENTITY_BOMBDROP and ents[i].SpawnerType == EntityType.ENTITY_PLAYER then
         local sprite = ents[i]:GetSprite()
@@ -315,7 +306,7 @@ function Alternity.TimeBombsExplode()
   end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.TimeBombsExplode)
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.TimeBombsExplode)
 
 ---<<AZAZEL'S LOST HORN>>---
 function Alternity:LostHornSpawnSwirls(Ent,DmgAmount,DmgFlags,DmgSource,CountdownFrames)
@@ -335,7 +326,7 @@ function Alternity:LostHornSpawnSwirls(Ent,DmgAmount,DmgFlags,DmgSource,Countdow
   end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.LostHornSpawnSwirls)
+Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.LostHornSpawnSwirls)
 
 function Alternity:LostHornChain()
   local player = Isaac.GetPlayer(0)
@@ -344,6 +335,11 @@ function Alternity:LostHornChain()
   if player:HasCollectible(Passive.AZAZELS_LOST_HORN) then
     if Game():GetRoom():GetFrameCount() <= 1 then
       ItemVars.AzazelsLostHorn.Swirls = {}
+    end
+    
+    if not ItemVars.AzazelsLostHorn.CostumeAdded then
+      ItemVars.AzazelsLostHorn.CostumeAdded = true
+      player:AddNullCostume(ItemVars.AzazelsLostHorn.HornCostume)
     end
     
     for i = 1, #swirls do
@@ -371,14 +367,4 @@ function Alternity:LostHornChain()
   end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.LostHornChain)
-
--------------------
---  API Init
--------------------
-local START_FUNC = start
-
-if AlphaAPI then START_FUNC()
-else if not __alphaInit then
-    __alphaInit={} end __alphaInit
-[#__alphaInit+1]=START_FUNC end
+Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.LostHornChain)
