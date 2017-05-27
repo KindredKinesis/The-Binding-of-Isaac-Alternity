@@ -1,151 +1,111 @@
-local Alternity = RegisterMod("Alternity",1)
+local mod = RegisterMod("Alternity", 1)
 local alphaMod
+local Alternity = {}
 
 -------------------
 --<<<FRAMEWORK>>>--
 -------------------
 
 ---<<TABLES>>---
-Alternity.Items = {
-  Passives = {},
-  Actives = {},
-  Familiars = {},
-  Trinkets = {}
-}
+local PASSIVES = {}
+local ACTIVES = {}
+local TRINKETS = {}
+local FAMILIARS = {}
+local ENTITIES = {}
+local ITEM_VARIABLES = {}
+local SFX_MANAGER
+local MOD_RNG
 
-Alternity.ItemVariables = {
-  CloakAndDagger = {
-      Variant = Isaac.GetEntityVariantByName("Cloak Dagger"),
-      Invisible = false
-  },
-  AlphaCrest = {
-    Active = false,
-    SymbolSprite = Sprite()
-  },
-  GoldenFleece = {
-    invulnerabilityTimeOut = 0
-  },
-  AzazelsLostHorn = {
-    SwirlType = Isaac.GetEntityTypeByName("Brim Swirl"),
-    SwirlVariant = Isaac.GetEntityVariantByName("Brim Swirl"),
-    HornCostume = Isaac.GetCostumeIdByPath("gfx/characters/costumes/costume_azazelslosthorn.anm2"),
-    Swirls = {}
-  }
-}
+ITEM_VARIABLES.CLOAK_AND_DAGGER = { invisible = false }
+ITEM_VARIABLES.ALPHA_CREST = { active = false, symbol = Sprite() }
+ITEM_VARIABLES.ALPHA_CREST.symbol:Load("gfx/effects/effect_alphacrest.anm2", true)
+ITEM_VARIABLES.GOLDEN_FLEECE = { invulnerabilityTimeOut = 0 }
+ITEM_VARIABLES.AZAZELS_LOST_HORN = { swirls = {} }
 
----<<VARIABLES>>---
-local Passive = Alternity.Items.Passives
-local Active = Alternity.Items.Actives
-local Familiar = Alternity.Items.Familiars
-local Trinket = Alternity.Items.Trinkets
-
-local ItemVars = Alternity.ItemVariables
-
-ItemVars.AlphaCrest.SymbolSprite:Load("gfx/effects/effect_alphacrest.anm2",true)
+local function start()
+    alphaMod = AlphaAPI.registerMod(mod)
+    SFX_MANAGER = SFXManager()
+    MOD_RNG = RNG()
+    
+    ENTITIES.LOST_HORN_SWIRL = alphaMod:getEntityConfig("Brim Swirl", 0)
+    ENTITIES.CLOAK_AND_DAGGER = alphaMod:getEntityConfig("Cloak Dagger", 0)
+    
+    PASSIVES.CLOAK_AND_DAGGER = alphaMod:registerItem("Cloak and Dagger")
+    PASSIVES.CLOAK_AND_DAGGER:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.cloakAndDaggerEffect, EntityType.ENTITY_PLAYER)
+    PASSIVES.CLOAK_AND_DAGGER:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.cloakAndDaggerUpdate, ENTITIES.CLOAK_AND_DAGGER.id, ENTITIES.CLOAK_AND_DAGGER.variant)
+    PASSIVES.CLOAK_AND_DAGGER:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.cloakAndDaggerDamage)
+    
+    PASSIVES.ALPHA_CREST = alphaMod:registerItem("Alpha Crest")
+    PASSIVES.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.alphaCrestDamage)
+    PASSIVES.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.alphaCrestActivate)
+    
+    PASSIVES.GOLDEN_FLEECE = alphaMod:registerItem("Golden Fleece")
+    PASSIVES.GOLDEN_FLEECE:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.goldenFleeceDamage, EntityType.ENTITY_PLAYER)
+    
+    PASSIVES.TIME_BOMBS = alphaMod:registerItem("Time Bombs")
+    PASSIVES.TIME_BOMBS:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.timeBombsExplode)
+    
+    PASSIVES.AZAZELS_LOST_HORN = alphaMod:registerItem("Azazel's Lost Horn", "gfx/characters/costumes/costume_azazelslosthorn.anm2")
+    PASSIVES.AZAZELS_LOST_HORN:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.lostHornSpawnSwirls)
+    PASSIVES.AZAZELS_LOST_HORN:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.lostHornChain)
+    
+    ACTIVES.EXCALIBUR = alphaMod:registerItem("Excalibur")
+    ACTIVES.EXCALIBUR:addCallback(AlphaAPI.Callbacks.ITEM_USE, Alternity.useExcalibur)
+    
+    alphaMod:addCallback(AlphaAPI.Callbacks.RUN_STARTED, Alternity.resetVariables)
+    
+    ENITTY_FLAGS = {}
+    
+    SOUNDS = {}
+end
 
 -----------------------
 --<<<MISCELLANEOUS>>>--
 -----------------------
 
-local function start()
-  --Start function
-  alphaMod = AlphaAPI.registerMod(Alternity)
-
-  Alternity.SetupItems()
-  Alternity.SetupFamiliars()
-
-  alphaMod:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.EntityDamage)
-end
-
-function Alternity.SetupItems()
-  --Cloak and Dagger--
-  Passive.CLOAK_AND_DAGGER = alphaMod:registerItem("Cloak and Dagger", nil)
-  --Alpha Crest--
-  Passive.ALPHA_CREST = alphaMod:registerItem("Alpha Crest", nil)
-  Passive.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.AlphaCrestActivate)
-  Alternity:AddCallback(ModCallbacks.MC_POST_RENDER,Alternity.RenderAlphaCrest)
-  --Golden Fleece--
-  Passive.GOLDEN_FLEECE = alphaMod:registerItem("Golden Fleece", nil)
-  --Time Bombs--
-  Passive.TIME_BOMBS = alphaMod:registerItem("Time Bombs", nil)
-  Passive.TIME_BOMBS:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.TimeBombsExplode)
-  --Azazel's Lost Horn--
-  Passive.AZAZELS_LOST_HORN = alphaMod:registerItem("Azazel's Lost Horn", ItemVars.AzazelsLostHorn.HornCostume)
-  --Excalibur--
-  Active.EXCALIBUR = alphaMod:registerItem("Excalibur", nil)
-  Active.EXCALIBUR:addCallback(AlphaAPI.Callbacks.ITEM_USE, Alternity.UseExcalibur)
-end
-
-function Alternity.SetupFamiliars()
-  -- Knife and swirl here
-end
-
-function Alternity:ResetVariables(FromSave)
-  if not FromSave then
-    ItemVars.CloakAndDagger.Invisible = false
-    ItemVars.AlphaCrest.Active = false
-    ItemVars.GoldenFleece.invulnerabilityTimeOut = 0
-    ItemVars.AzazelsLostHorn.Swirls = {}
-  end
-end
-
-Alternity:AddCallback(ModCallbacks.MC_POST_GAME_STARTED,Alternity.ResetVariables)
-
---On Entity Take Damage
-function Alternity.EntityDamage(entity, amount, damageflag, source, countdownframes)
-  local player = Isaac.GetPlayer(0)
-
-  --Golden Fleece--
-  if entity.Type == EntityType.ENTITY_PLAYER and player:HasCollectible(Passive.GOLDEN_FLEECE.id) then
-    chance = math.min(30, player:GetNumCoins()) * 0.87
-    chance = chance + math.max(0, player:GetNumCoins() - 30) * 0.1
-    
-    if math.random(1, 100) < chance then
-      ItemVars.GoldenFleece.invulnerabilityTimeOut = Game():GetFrameCount() + 6
-      player:SetColor(Color(1,1,0,1,0,0,0), 10, 1, true, false)
+local function random(min, max)
+    if min ~= nil and max ~= nil then
+        return math.floor(MOD_RNG:RandomFloat() * (max - min + 1) + min)
+    elseif min ~= nil then
+        return math.floor(MOD_RNG:RandomFloat() * (min + 1))
     end
-    
-    if Game():GetFrameCount() <= ItemVars.GoldenFleece.invulnerabilityTimeOut then
-      return false
-    else
-      ItemVars.GoldenFleece.invulnerabilityTimeOut = -1
-    end
-  end
-
-  --Alpha Crest--
-  if player:HasCollectible(Passive.ALPHA_CREST.id) and entity:IsVulnerableEnemy() then
-    if ItemVars.AlphaCrest.Active then
-      entity.HitPoints = entity.HitPoints - (amount * 2)
-      return true
-    end
-  end
+    return MOD_RNG:RandomFloat()
 end
+
+function Alternity.resetVariables()
+    ITEM_VARIABLES.CLOAK_AND_DAGGER.invisible = false
+    ITEM_VARIABLES.ALPHA_CREST.active = false
+    ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut = 0
+    ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls = {}
+end
+
+mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Alternity.resetVariables)
 
 -----------------
 --<<<ACTIVES>>>--
 -----------------
 
 ---<<EXCALIBUR>>---
-function Alternity.UseExcalibur()
-  local player = Isaac.GetPlayer(0)
-  
-  if player:GetMaxHearts() > 2 then
-    if player:GetMaxHearts() == 4 then
-      player:AddCollectible(Passive.CLOAK_AND_DAGGER,0,true)
-    elseif player:GetMaxHearts() == 6 then
-      player:AddCollectible(CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY,0,true)
-    elseif player:GetMaxHearts() == 8 then
-      player:AddCollectible(CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER,0,true)
-    elseif player:GetMaxHearts() >= 10 then
-      player:AddCollectible(CollectibleType.COLLECTIBLE_MOMS_KNIFE,0,true)
+function Alternity:useExcalibur()
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    
+    if player:GetMaxHearts() > 2 then
+        if player:GetMaxHearts() == 4 then
+        player:AddCollectible(Passive.CLOAK_AND_DAGGER,0,true)
+        elseif player:GetMaxHearts() == 6 then
+        player:AddCollectible(CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY,0,true)
+        elseif player:GetMaxHearts() == 8 then
+        player:AddCollectible(CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER,0,true)
+        elseif player:GetMaxHearts() >= 10 then
+        player:AddCollectible(CollectibleType.COLLECTIBLE_MOMS_KNIFE,0,true)
+        end
+    
+        player:RemoveCollectible(ACTIVES.EXCALIBUR.id)
+    
+        return true
+    else
+        player:AnimateSad()
     end
-    
-    player:RemoveCollectible(Active.EXCALIBUR.id)
-    
-    return true
-  else
-    player:AnimateSad()
-  end
 end
 
 ------------------
@@ -153,232 +113,234 @@ end
 ------------------
 
 ---<<CLOAK AND DAGGER>>---
-function Alternity.CloakAndDaggerEffect()
-  local player = Isaac.GetPlayer(0)
-  local entities = Isaac.GetRoomEntities()
-  local playerdata = player:GetData()
-  
-  if player:HasCollectible(Passive.CLOAK_AND_DAGGER) then
-    if playerdata.CloakAndDagger == nil or player:GetFireDirection() == Direction.NO_DIRECTION then
-      playerdata.CloakAndDagger = 0
+function Alternity.cloakAndDaggerEffect(player, data)
+    player = player:ToPlayer()
+    
+    if data.cloakAndDagger == nil then
+        data.cloakAndDagger = 0
+    elseif player:GetFireDirection() ~= Direction.NO_DIRECTION then
+        data.cloakAndDagger = data.cloakAndDagger + 1
     else
-      playerdata.CloakAndDagger = playerdata.CloakAndDagger + 1
+        data.cloakAndDagger = data.cloakAndDagger - 1
     end
     
-    if playerdata.InvisTimeout == nil then
-      playerdata.InvisTimeout = 90
-    elseif playerdata.InvisTimeout <= 0 then
-      playerdata.InvisTimeout = 90
-      ItemVars.CloakAndDagger.Invisible = false
+    if data.invisTimeout == nil then
+        data.invisTimeout = 90
+    elseif data.invisTimeout <= 0 then
+        data.invisTimeout = 90
+        ITEM_VARIABLES.CLOAK_AND_DAGGER.invisible = false
     end
     
-    if ItemVars.CloakAndDagger.Invisible then
-      player:GetEffects():AddCollectibleEffect(CollectibleType.COLLECTIBLE_CAMO_UNDIES,false)
-      playerdata.InvisTimeout = playerdata.InvisTimeout - 1
+    if ITEM_VARIABLES.CLOAK_AND_DAGGER.invisible then
+        player:GetEffects():AddCollectibleEffect(CollectibleType.COLLECTIBLE_CAMO_UNDIES,false)
+        data.invisTimeout = data.invisTimeout - 1
     end
     
-    if playerdata.CloakAndDagger == 90 then
-      local knife = Isaac.Spawn(EntityType.ENTITY_FAMILIAR,ItemVars.CloakAndDagger.Variant,0,player.Position,Vector(0,0),player)
-      knife.CollisionDamage = 10
-      playerdata.CloakAndDagger = 0
+    if data.cloakAndDagger == 90 then
+        local knife = ENTITIES.CLOAK_AND_DAGGER:spawn(player.Position, Vector(0,0), player)
+        knife.CollisionDamage = 10
+        data.cloakAndDagger = 0
     end
-  end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.CloakAndDaggerEffect)
-
-function Alternity:CloakAndDaggerUpdate(knife)
-  local player = Isaac.GetPlayer(0)
-  local data = knife:GetData()
-  local sprite = knife:GetSprite()
-  
-  knife.Position = player.Position
-  
-  if sprite:IsFinished("Spin") then
-    knife:Remove()
-  end
-  
-  if knife.FrameCount > 10 and not sprite:IsPlaying("Spin") then
-    sprite:Play("Spin",true)
-  end
-end
-
---Alternity:AddCallback(ModCallbacks.MC_FAMILIAR_UPDATE,Alternity.CloakAndDaggerUpdate,ItemVars.CloakAndDagger.Variant)
-
-function Alternity:CloakAndDaggerDamage(Ent,DamageAmount,DamageFlags,DamageSource,CountdownFrames)
-  local player = Isaac.GetPlayer(0)
-  
-  if player:HasCollectible(Passive.CLOAK_AND_DAGGER) then
-    if DamageSource.Type == EntityType.ENTITY_FAMILIAR and DamageSource.Variant == ItemVars.CloakAndDagger.Variant then
-      if DamageAmount >= Ent.HitPoints then
-        ItemVars.CloakAndDagger.Invisible = true
-      end
+function Alternity.cloakAndDaggerUpdate(knife, data)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    local sprite = knife:GetSprite()
+    
+    knife.Position = player.Position
+    
+    if sprite:IsFinished("Spin") then
+        knife:Remove()
     end
-  end
+    
+    if knife.FrameCount > 10 and not sprite:IsPlaying("Spin") then
+        sprite:Play("Spin",true)
+    end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.CloakAndDaggerDamage)
-
+function Alternity.cloakAndDaggerDamage(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    
+    if dmgSource.Type == ENTITIES.CLOAK_AND_DAGGER.id and dmgSource.Variant == ENTITIES.CLOAK_AND_DAGGER.variant then
+        if dmgAmount >= entity.HitPoints then
+            ITEM_VARIABLES.CLOAK_AND_DAGGER.invisible = true
+        end
+    end
+end
 
 ---<<ALPHA CREST>>---
-function Alternity:AlphaCrestActivate()
-  local player = Isaac.GetPlayer(0)
-  local entities = Isaac.GetRoomEntities()
-  local room = Game():GetLevel():GetCurrentRoom()
-  local data = player:GetData()
+function Alternity.alphaCrestDamage(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
   
-  if player:HasCollectible(Passive.ALPHA_CREST.id) then
-    if room:GetFrameCount() == 1 then
-      data.AlphaCount = 0
-      Isaac.DebugString("prevented")
+    if entity:IsVulnerableEnemy() then
+        if ITEM_VARIABLES.ALPHA_CREST.active then
+            entity.HitPoints = entity.HitPoints - (dmgAmount * 2)
+            return true
+        end
     end
-    
-    local totalenemies = 0
-    
-    for i = 1, #entities do
-      if entities[i]:IsActiveEnemy(false) then
-        totalenemies = totalenemies + 1
-      end
-    end
-
-
-    if totalenemies > data.AlphaCount then
-      data.AlphaCount = totalenemies
-    end
-    
-    local currenemies = 0
-    
-    for i = 1, #entities do
-      if entities[i]:IsActiveEnemy(false) then
-        currenemies = currenemies + 1
-      end
-    end
-    
-    if currenemies >= (data.AlphaCount * 0.66) and data.AlphaCount > 3 then
-      ItemVars.AlphaCrest.Active = true
-    else
-      ItemVars.AlphaCrest.Active = false
-    end
-  end
 end
 
-function Alternity:RenderAlphaCrest()
-  local sprite = ItemVars.AlphaCrest.SymbolSprite
-  local room = Game():GetRoom()
-  local player = Isaac.GetPlayer(0)
+function Alternity.alphaCrestActivate()
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    local data = player:GetData()
   
-  if not room:IsClear() and player:HasCollectible(Passive.ALPHA_CREST.id) and room:GetFrameCount() > 10 then
-    if ItemVars.AlphaCrest.Active then
-      if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
-        sprite:Play("FadeIn",true)
-      end
-    else
-      if sprite:IsFinished("FadeIn") then
-        sprite:Play("FadeOut",true)
-      end
+    if AlphaAPI.GAME_STATE.ROOM:GetFrameCount() <= 2 then
+        data.alphaCount = 0
     end
     
-    sprite:Update()
-    sprite:Render(room:WorldToScreenPosition(player.Position),Vector(0,0),Vector(0,0))
-  end
+    local totalEnemies = 0
+    
+    for i, entity in pairs(AlphaAPI.entities.enemies) do
+        if entity:IsActiveEnemy(false) then
+            totalEnemies = totalEnemies + 1
+        end
+    end
+    
+    if totalEnemies > data.alphaCount then
+        data.alphaCount = totalEnemies
+    end
+    
+    local currEnemies = 0
+    
+    for i, entity in pairs(AlphaAPI.entities.enemies) do
+        if entity:IsActiveEnemy(false) then
+            currEnemies = currEnemies + 1
+        end
+    end
+    
+    if currEnemies >= (data.alphaCount * 0.66) and data.alphaCount > 3 then
+        ITEM_VARIABLES.ALPHA_CREST.active = true
+    else
+        ITEM_VARIABLES.ALPHA_CREST.active = false
+    end
+end
+
+function Alternity.renderAlphaCrest()
+    local sprite = ITEM_VARIABLES.ALPHA_CREST.symbol
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+  
+    if not AlphaAPI.GAME_STATE.ROOM:IsClear() and AlphaAPI.GAME_STATE.ROOM:GetFrameCount() > 10 then
+        if ITEM_VARIABLES.ALPHA_CREST.active then
+            if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
+                sprite:Play("FadeIn",true)
+            end
+        else
+            if sprite:IsFinished("FadeIn") then
+                sprite:Play("FadeOut",true)
+            end
+        end
+    
+        sprite:Update()
+        sprite:Render(AlphaAPI.GAME_STATE.ROOM:WorldToScreenPosition(player.Position),Vector(0,0),Vector(0,0))
+    end
+end
+
+mod:AddCallback(ModCallbacks.MC_POST_RENDER, Alternity.renderAlphaCrest)
+
+---<<GOLDEN FLEECE>>---
+function Alternity.goldenFleeceDamage(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+  
+    if entity:ToPlayer() then
+        chance = math.min(30, player:GetNumCoins()) * 0.87
+        chance = chance + math.max(0, player:GetNumCoins() - 30) * 0.1
+        
+        if random(1,100) < chance then
+            ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut = AlphaAPI.GAME_STATE.GAME:GetFrameCount() + 6
+            player:SetColor(Color(1,1,0,1,0,0,0), 10, 1, true, false)
+        end
+      
+        if AlphaAPI.GAME_STATE.GAME:GetFrameCount() <= ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut then
+            return false
+        else
+            ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut = -1
+        end
+    end
 end
 
 ---<<TIME BOMBS>>---
-function Alternity.TimeBombsExplode()
-  local player = Isaac.GetPlayer(0)
-  local ents = Isaac.GetRoomEntities()
+function Alternity.timeBombsExplode()
+  local player = AlphaAPI.GAME_STATE.PLAYERS[1]
   
-  if player:HasCollectible(Passive.TIME_BOMBS.id) then
-    for i = 1, #ents do
-      if ents[i].Type == EntityType.ENTITY_BOMBDROP and ents[i].SpawnerType == EntityType.ENTITY_PLAYER then
-        local sprite = ents[i]:GetSprite()
-        local path = "gfx/items/pick ups/pickup_timebombs.anm2"
-        
-        if sprite:IsPlaying("Pulse") and sprite:GetFilename() ~= path then
-          sprite:Load(path,true)
-          
-          if not sprite:IsPlaying("Pulse") then
-            sprite:Play("Pulse",true)
-          end
-        end
-        
-        if ents[i]:GetSprite():IsPlaying("Explode") then
-          for u = 1, #ents do
-            if ents[u]:IsActiveEnemy(false) then
-              ents[u]:AddFreeze(EntityRef(player),90)
-              ents[u]:SetColor(Color(0.4,0.4,1,1,0,0,0),90,1,false,false)
+    for i, entity in pairs(AlphaAPI.entities.friendly) do
+        if entity:ToBomb() and entity.SpawnerType == EntityType.ENTITY_PLAYER then
+            local sprite = entity:GetSprite()
+            local path = "gfx/items/pick ups/pickup_timebombs.anm2"
+            
+            if sprite:IsPlaying("Pulse") and sprite:GetFilename() ~= path then
+                sprite:Load(path,true)
+              
+                if not sprite:IsPlaying("Pulse") then
+                    sprite:Play("Pulse",true)
+                end
             end
-          end
+            
+            if sprite:IsPlaying("Explode") then
+                for u, ent in pairs(AlphaAPI.entities.enemies) do
+                    ent:AddFreeze(EntityRef(player), 90)
+                    ent:SetColor(Color(0.4,0.4,1,1,0,0,0), 90, 1, true, false)
+                end
+            end
         end
-      end
     end
-  end
 end
-
---Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.TimeBombsExplode)
 
 ---<<AZAZEL'S LOST HORN>>---
-function Alternity:LostHornSpawnSwirls(Ent,DmgAmount,DmgFlags,DmgSource,CountdownFrames)
-  local player = Isaac.GetPlayer(0)
-  local swirls = ItemVars.AzazelsLostHorn.Swirls
+function Alternity.lostHornSpawnSwirls(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    local swirls = ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls
   
-  if player:HasCollectible(Passive.AZAZELS_LOST_HORN) then
-    if Ent.HitPoints - DmgAmount <= 0 and Ent:IsActiveEnemy(false) then
-      if #swirls < 2 then
-        local swirl = Isaac.Spawn(ItemVars.AzazelsLostHorn.SwirlType,ItemVars.AzazelsLostHorn.SwirlVariant,0,Ent.Position,Vector(0,0),player)
-        swirl.SpriteScale = Vector(0.5,0.5)
-        swirl:SetColor(player.TearColor,-1,1,false,false)
-        swirl:GetSprite():Play("Idle",true)
-        table.insert(swirls,swirl)
-      end
+    if entity.HitPoints - dmgAmount <= 0 and entity:IsActiveEnemy(false) then
+        if #swirls < 2 then
+            local swirl = ENTITIES.LOST_HORN_SWIRL:spawn(entity.Position, Vector(0,0), player)
+            swirl.SpriteScale = Vector(0.5,0.5)
+            swirl:SetColor(player.TearColor,-1,1,false,false)
+            swirl:GetSprite():Play("Idle",true)
+            table.insert(swirls,swirl)
+        end
     end
-  end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_ENTITY_TAKE_DMG,Alternity.LostHornSpawnSwirls)
-
-function Alternity:LostHornChain()
-  local player = Isaac.GetPlayer(0)
-  local swirls = ItemVars.AzazelsLostHorn.Swirls
+function Alternity.lostHornChain()
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    local swirls = ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls
   
-  if player:HasCollectible(Passive.AZAZELS_LOST_HORN) then
-    if Game():GetRoom():GetFrameCount() <= 1 then
-      ItemVars.AzazelsLostHorn.Swirls = {}
+    if AlphaAPI.GAME_STATE.ROOM:GetFrameCount() <= 1 then
+        ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls = {}
     end
     
-    for i = 1, #swirls do
-      if swirls[i]:GetSprite():IsFinished("Idle") then
-        swirls[i]:Remove()
-        table.remove(ItemVars.AzazelsLostHorn.Swirls,i)
-        break
-      end
+    for i, swirl in ipairs(swirls) do
+        if swirl:GetSprite():IsFinished("Idle") then
+            swirl:Remove()
+            table.remove(ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls,i)
+            break
+        end
     end
     
-    if #swirls == 2 then
-      local brim = EntityLaser.ShootAngle(1,swirls[1].Position,(swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(),45,Vector(0,0),player)
-      brim.DisableFollowParent = true
-      brim:SetMaxDistance(swirls[1].Position:Distance(swirls[2].Position))
-      brim.CollisionDamage = player.Damage / 3
-      brim.SpriteScale = Vector(0.6,1)
-      brim.TearFlags = player.TearFlags
-      brim:SetColor(player.TearColor,-1,1,false,false)
-      
-      swirls[1]:GetSprite():Play("Idle",true)
-      swirls[2]:GetSprite():Play("Idle",true)
-      
-      ItemVars.AzazelsLostHorn.Swirls = {swirls[2]}
+    if #swirls >= 2 then
+        local brim = EntityLaser.ShootAngle(1,swirls[1].Position,(swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(),45,Vector(0,0),player)
+        brim.DisableFollowParent = true
+        brim:SetMaxDistance(swirls[1].Position:Distance(swirls[2].Position))
+        brim.CollisionDamage = player.Damage / 3
+        brim.SpriteScale = Vector(0.6,1)
+        brim.TearFlags = player.TearFlags
+        brim:SetColor(player.TearColor,-1,1,false,false)
+        
+        swirls[1]:GetSprite():Play("Idle",true)
+        swirls[2]:GetSprite():Play("Idle",true)
+        
+        ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls = {swirls[2]}
     end
-  end
 end
 
---Alternity:AddCallback(ModCallbacks.MC_POST_UPDATE,Alternity.LostHornChain)
+----------------------------------
+--<<<ALPHA API INITIALISATION>>>--
+----------------------------------
 
--------------------
---  API Init
--------------------
 local START_FUNC = start
 
 if AlphaAPI then START_FUNC()
 else if not __alphaInit then
-    __alphaInit={} end __alphaInit
-[#__alphaInit+1]=START_FUNC end
+    __alphaInit = {}
+end __alphaInit[#__alphaInit + 1] = START_FUNC
+end
