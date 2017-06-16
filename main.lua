@@ -49,6 +49,9 @@ local function start()
     PASSIVES.AZAZELS_LOST_HORN:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.lostHornSpawnSwirls)
     PASSIVES.AZAZELS_LOST_HORN:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.lostHornChain)
     
+    PASSIVES.WISDOM_TOOTH = alphaMod:registerItem("Wisdom Tooth")
+    PASSIVES.WISDOM_TOOTH:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.wisdomToothUpdate, EntityType.ENTITY_PLAYER)
+    
     ACTIVES.EXCALIBUR = alphaMod:registerItem("Excalibur")
     ACTIVES.EXCALIBUR:addCallback(AlphaAPI.Callbacks.ITEM_USE, Alternity.useExcalibur)
     
@@ -91,13 +94,13 @@ function Alternity:useExcalibur()
     
     if player:GetMaxHearts() > 2 then
         if player:GetMaxHearts() == 4 then
-        player:AddCollectible(Passive.CLOAK_AND_DAGGER,0,true)
+        player:AddCollectible(Passive.CLOAK_AND_DAGGER, 0, true)
         elseif player:GetMaxHearts() == 6 then
-        player:AddCollectible(CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY,0,true)
+        player:AddCollectible(CollectibleType.COLLECTIBLE_SPEAR_OF_DESTINY, 0, true)
         elseif player:GetMaxHearts() == 8 then
-        player:AddCollectible(CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER,0,true)
+        player:AddCollectible(CollectibleType.COLLECTIBLE_SACRIFICIAL_DAGGER, 0, true)
         elseif player:GetMaxHearts() >= 10 then
-        player:AddCollectible(CollectibleType.COLLECTIBLE_MOMS_KNIFE,0,true)
+        player:AddCollectible(CollectibleType.COLLECTIBLE_MOMS_KNIFE, 0, true)
         end
     
         player:RemoveCollectible(ACTIVES.EXCALIBUR.id)
@@ -222,16 +225,16 @@ function Alternity.renderAlphaCrest()
     if not AlphaAPI.GAME_STATE.ROOM:IsClear() and AlphaAPI.GAME_STATE.ROOM:GetFrameCount() > 10 then
         if ITEM_VARIABLES.ALPHA_CREST.active then
             if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
-                sprite:Play("FadeIn",true)
+                sprite:Play("FadeIn", true)
             end
         else
             if sprite:IsFinished("FadeIn") then
-                sprite:Play("FadeOut",true)
+                sprite:Play("FadeOut", true)
             end
         end
     
         sprite:Update()
-        sprite:Render(AlphaAPI.GAME_STATE.ROOM:WorldToScreenPosition(player.Position),Vector(0,0),Vector(0,0))
+        sprite:Render(AlphaAPI.GAME_STATE.ROOM:WorldToScreenPosition(player.Position), Vector(0, 0), Vector(0, 0))
     end
 end
 
@@ -239,15 +242,15 @@ mod:AddCallback(ModCallbacks.MC_POST_RENDER, Alternity.renderAlphaCrest)
 
 ---<<GOLDEN FLEECE>>---
 function Alternity.goldenFleeceDamage(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
-    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    local player = entity:ToPlayer()
   
-    if entity:ToPlayer() then
+    if player then
         chance = math.min(30, player:GetNumCoins()) * 0.87
         chance = chance + math.max(0, player:GetNumCoins() - 30) * 0.1
         
-        if random(1,100) < chance then
+        if random(1, 100) < chance then
             ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut = AlphaAPI.GAME_STATE.GAME:GetFrameCount() + 6
-            player:SetColor(Color(1,1,0,1,0,0,0), 10, 1, true, false)
+            player:SetColor(Color(1, 1, 0, 1, 0, 0, 0), 10, 1, true, false)
         end
       
         if AlphaAPI.GAME_STATE.GAME:GetFrameCount() <= ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut then
@@ -268,17 +271,17 @@ function Alternity.timeBombsExplode()
             local path = "gfx/items/pick ups/pickup_timebombs.anm2"
             
             if sprite:IsPlaying("Pulse") and sprite:GetFilename() ~= path then
-                sprite:Load(path,true)
+                sprite:Load(path, true)
               
                 if not sprite:IsPlaying("Pulse") then
-                    sprite:Play("Pulse",true)
+                    sprite:Play("Pulse", true)
                 end
             end
             
             if sprite:IsPlaying("Explode") then
                 for u, ent in pairs(AlphaAPI.entities.enemies) do
                     ent:AddFreeze(EntityRef(player), 90)
-                    ent:SetColor(Color(0.4,0.4,1,1,0,0,0), 90, 1, true, false)
+                    ent:SetColor(Color(0.4, 0.4, 1, 1, 0, 0, 0), 90, 1, true, false)
                 end
             end
         end
@@ -293,10 +296,10 @@ function Alternity.lostHornSpawnSwirls(entity, dmgAmount, dmgFlags, dmgSource, i
     if entity.HitPoints - dmgAmount <= 0 and entity:IsActiveEnemy(false) then
         if #swirls < 2 then
             local swirl = ENTITIES.LOST_HORN_SWIRL:spawn(entity.Position, Vector(0,0), player)
-            swirl.SpriteScale = Vector(0.5,0.5)
-            swirl:SetColor(player.TearColor,-1,1,false,false)
-            swirl:GetSprite():Play("Idle",true)
-            table.insert(swirls,swirl)
+            swirl.SpriteScale = Vector(0.5, 0.5)
+            swirl:SetColor(player.TearColor, -1, 1, false, false)
+            swirl:GetSprite():Play("Idle", true)
+            table.insert(swirls, swirl)
         end
     end
 end
@@ -312,24 +315,57 @@ function Alternity.lostHornChain()
     for i, swirl in ipairs(swirls) do
         if swirl:GetSprite():IsFinished("Idle") then
             swirl:Remove()
-            table.remove(ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls,i)
+            table.remove(ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls, i)
             break
         end
     end
     
     if #swirls >= 2 then
-        local brim = EntityLaser.ShootAngle(1,swirls[1].Position,(swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(),45,Vector(0,0),player)
+        local brim = EntityLaser.ShootAngle(1, swirls[1].Position, (swirls[2].Position:__sub(swirls[1].Position)):GetAngleDegrees(), 45, Vector(0,0),player)
         brim.DisableFollowParent = true
         brim:SetMaxDistance(swirls[1].Position:Distance(swirls[2].Position))
         brim.CollisionDamage = player.Damage / 3
-        brim.SpriteScale = Vector(0.6,1)
+        brim.SpriteScale = Vector(0.6, 1)
         brim.TearFlags = player.TearFlags
-        brim:SetColor(player.TearColor,-1,1,false,false)
+        brim:SetColor(player.TearColor, -1, 1, false, false)
         
-        swirls[1]:GetSprite():Play("Idle",true)
-        swirls[2]:GetSprite():Play("Idle",true)
+        swirls[1]:GetSprite():Play("Idle", true)
+        swirls[2]:GetSprite():Play("Idle", true)
         
         ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls = {swirls[2]}
+    end
+end
+
+---<<WISDOM TOOTH>>---
+function Alternity.wisdomToothUpdate(player, data)
+    player = player:ToPlayer()
+    
+    if player then
+        if data.wisdomToothCharge == nil then
+            data.wisdomToothCharge = 0
+        elseif player:GetFireDirection() == Direction.NO_DIRECTION and data.wisdomToothCharge < player.MaxFireDelay * 3 then
+            data.wisdomToothCharge = data.wisdomToothCharge + 1
+            
+            if data.wisdomToothCharge >= player.MaxFireDelay * 3 then
+                player:SetColor(Color(1, 0.3, 1, 1, 50, 0, 50), 15, 1, true, false)
+            end
+        elseif data.wisdomToothCharge >= player.MaxFireDelay * 3 then
+            for i, ent in pairs(AlphaAPI.entities.friendly) do
+                local tear = ent:ToTear()
+                
+                if tear and ent.FrameCount == 1 then
+                    tear:ChangeVariant(TearVariant.TOOTH)
+                    tear.Scale = tear.Scale * 1.2
+                    tear.TearFlags = tear.TearFlags | TearFlags.TEAR_HOMING
+                    tear:SetColor(Color(1, 0, 1, 1, 0, 0, 0), -1, 1, false, false)
+                    tear.CollisionDamage = player.Damage * 3.5
+                    
+                    data.wisdomToothCharge = 0
+                end
+            end
+        else
+            data.wisdomToothCharge = 0
+        end
     end
 end
 
