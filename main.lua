@@ -40,6 +40,7 @@ local function start()
     ENTITIES.CLOAK_AND_DAGGER = alphaMod:getEntityConfig("Cloak Dagger", 0)
     ENTITIES.ALPHA_CREST = alphaMod:getEntityConfig("Alpha Crest", 0)
     ENTITIES.ANTIMATTER_EXPLOSION = alphaMod:getEntityConfig("Antimatter Explosion", 0)
+    ENTITIES.CHOPSTICK_TEAR = alphaMod:getEntityConfig("Chopstick Tear", 0)
     
     PASSIVES.CLOAK_AND_DAGGER = alphaMod:registerItem("Cloak and Dagger")
     PASSIVES.CLOAK_AND_DAGGER:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.cloakAndDaggerEffect, EntityType.ENTITY_PLAYER)
@@ -72,7 +73,7 @@ local function start()
     
     PASSIVES.CHOPSTICKS = alphaMod:registerItem("Chopsticks")
     PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ITEM_CACHE, Alternity.chopsticksCache)
-    PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ENTITY_APPEAR, Alternity.makeChopstickTear, EntityType.ENTITY_TEAR)
+    PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.makeChopstickTear, EntityType.ENTITY_TEAR)
     PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.chopstickCheckCollision)
     
     ACTIVES.EXCALIBUR = alphaMod:registerItem("Excalibur")
@@ -97,10 +98,11 @@ end
 function Alternity.resetVariables()
     MOD_RNG:SetSeed(AlphaAPI.GAME_STATE.GAME:GetSeeds():GetStartSeed(), 0)
     
-    ITEM_VARIABLES.CLOAK_AND_DAGGER.invisible = false
-    ITEM_VARIABLES.ALPHA_CREST.active = false
-    ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut = 0
-    ITEM_VARIABLES.AZAZELS_LOST_HORN.swirls = {}
+    ITEM_VARIABLES.CLOAK_AND_DAGGER = { invisible = false }
+    ITEM_VARIABLES.ALPHA_CREST = { active = false, symbol = nil }
+    ITEM_VARIABLES.GOLDEN_FLEECE = { invulnerabilityTimeOut = 0 }
+    ITEM_VARIABLES.AZAZELS_LOST_HORN = { swirls = {} }
+    ITEM_VARIABLES.WISDOM_TOOTH = { wisdomTooth = false, hasFired = 0 }
 end
 
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, Alternity.resetVariables)
@@ -457,36 +459,48 @@ function Alternity.chopsticksCache(player, cacheFlag)
 end
 
 function Alternity.makeChopstickTear(tear, data)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    
     if not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) then
         AlphaAPI.addFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR)
         
         tear = tear:ToTear()
         tear.TearFlags = tear.TearFlags | TearFlags.TEAR_PIERCING
-        tear.SpriteScale = Vector(5, 0.1)
+        tear.SpriteRotation = tear.Velocity:GetAngleDegrees()
+        tear.SpriteScale = Vector(1, 1) * math.sqrt(player.Damage / 3.5)
+        tear:ChangeVariant(ENTITIES.CHOPSTICK_TEAR.variant)
+    else
+        if tear:IsDead() then
+            --IMPLEMENT SPLASH EFFECT HERE WHEN IT'S MADE
+            --Isaac.Spawn(EntityType.ENTITY_EFFECT, EffectVariant.TEAR_POOF_A, 0, tear.Position, Vector(0, 0), tear)
+            return nil
+        end
+        
         tear.SpriteRotation = tear.Velocity:GetAngleDegrees()
     end
 end
 
 function Alternity.chopstickCheckCollision(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
-    local tear = AlphaAPI.getEntityFromRef(dmgSource)
+    local tear = AlphaAPI.getEntityFromRef(dmgSource):ToTear()
     
-    if AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) then
+    if AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) and tear then
         local room = AlphaAPI.GAME_STATE.GAME:GetLevel():GetCurrentRoom()
         local centreY = room:GetCenterPos().Y
         local centreX = room:GetCenterPos().X
         
-        local x = entity.Position.X - centreY
-        local y = entity.Position.Y - centreX
+        local x1 = tear.Position.X - centreX
+        local y1 = tear.Position.Y - centreY
+        local x2 = entity.Position.X - centreX
+        local y2 = entity.Position.Y - centreY
         local a = math.tan((360 - tear.Velocity:GetAngleDegrees()) / 180 * math.pi)
         local b = -1
-        local c = -(a * x + b * y)
+        local c = y1 - (a * x1)
         
-        local perpendicularDist = math.abs((a * x) + (b * y) + c) / math.sqrt(a^2 + b^2)
+        local perpendicularDist = math.abs((a * x2) + (b * y2) + c) / math.sqrt(a^2 + b^2)
         
-        Isaac.DebugString("| " .. a .. " * " .. x .. " + " .. b .. " * " .. y .. " + " .. c .. " | / sqrt(" .. a .. "^2 + " .. b .. "^2)") 
-        Isaac.DebugString("\nNEW DISTANCE" .. "\nx: " .. x .. "\ny: " .. y .. "\na: " .. a .. "\nb: " .. b .. "\nc: " .. c)
-        
-        Isaac.ConsoleOutput(perpendicularDist)
+        if perpendicularDist > math.sqrt(400 * tear.SpriteScale.Y) then
+            return false
+        end
     end
 end
 
