@@ -13,12 +13,13 @@ local TRINKETS = {}
 local FAMILIARS = {}
 local ENTITIES = {}
 local ITEM_VARIABLES = {}
+local ENTITY_FLAGS = {}
+local SOUNDS = {}
 local SFX_MANAGER
 local MOD_RNG
 
 ITEM_VARIABLES.CLOAK_AND_DAGGER = { invisible = false }
-ITEM_VARIABLES.ALPHA_CREST = { active = false, symbol = Sprite() }
-ITEM_VARIABLES.ALPHA_CREST.symbol:Load("gfx/effects/effect_alphacrest.anm2", true)
+ITEM_VARIABLES.ALPHA_CREST = { active = false, symbol = nil }
 ITEM_VARIABLES.GOLDEN_FLEECE = { invulnerabilityTimeOut = 0 }
 ITEM_VARIABLES.AZAZELS_LOST_HORN = { swirls = {} }
 
@@ -27,8 +28,16 @@ local function start()
     SFX_MANAGER = SFXManager()
     MOD_RNG = RNG()
     
+    ENTITY_FLAGS = {
+        ANTIMATTER_TEAR = AlphaAPI.createFlag()
+    }
+    
+    SOUNDS = {}
+    
     ENTITIES.LOST_HORN_SWIRL = alphaMod:getEntityConfig("Brim Swirl", 0)
     ENTITIES.CLOAK_AND_DAGGER = alphaMod:getEntityConfig("Cloak Dagger", 0)
+    ENTITIES.ALPHA_CREST = alphaMod:getEntityConfig("Alpha Crest", 0)
+    ENTITIES.ANTIMATTER_EXPLOSION = alphaMod:getEntityConfig("Antimatter Explosion", 0)
     
     PASSIVES.CLOAK_AND_DAGGER = alphaMod:registerItem("Cloak and Dagger")
     PASSIVES.CLOAK_AND_DAGGER:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.cloakAndDaggerEffect, EntityType.ENTITY_PLAYER)
@@ -38,6 +47,7 @@ local function start()
     PASSIVES.ALPHA_CREST = alphaMod:registerItem("Alpha Crest")
     PASSIVES.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.alphaCrestDamage)
     PASSIVES.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ITEM_UPDATE, Alternity.alphaCrestActivate)
+    PASSIVES.ALPHA_CREST:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.renderAlphaCrest, EntityType.ENTITY_PLAYER)
     
     PASSIVES.GOLDEN_FLEECE = alphaMod:registerItem("Golden Fleece")
     PASSIVES.GOLDEN_FLEECE:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.goldenFleeceDamage, EntityType.ENTITY_PLAYER)
@@ -52,14 +62,14 @@ local function start()
     PASSIVES.WISDOM_TOOTH = alphaMod:registerItem("Wisdom Tooth")
     PASSIVES.WISDOM_TOOTH:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.wisdomToothUpdate, EntityType.ENTITY_PLAYER)
     
+    PASSIVES.ANTI_MATTER = alphaMod:registerItem("Anti-Matter", "gfx/characters/costumes/costume_antimatter.anm2")
+    PASSIVES.ANTI_MATTER:addCallback(AlphaAPI.Callbacks.ENTITY_APPEAR, Alternity.makeAntiMatterTear, EntityType.ENTITY_TEAR)
+    PASSIVES.ANTI_MATTER:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.antiMatterDamage)
+    
     ACTIVES.EXCALIBUR = alphaMod:registerItem("Excalibur")
     ACTIVES.EXCALIBUR:addCallback(AlphaAPI.Callbacks.ITEM_USE, Alternity.useExcalibur)
     
     alphaMod:addCallback(AlphaAPI.Callbacks.RUN_STARTED, Alternity.resetVariables)
-    
-    ENITTY_FLAGS = {}
-    
-    SOUNDS = {}
 end
 
 -----------------------
@@ -76,6 +86,8 @@ local function random(min, max)
 end
 
 function Alternity.resetVariables()
+    MOD_RNG:SetSeed(AlphaAPI.GAME_STATE.GAME:GetSeeds():GetStartSeed(), 0)
+    
     ITEM_VARIABLES.CLOAK_AND_DAGGER.invisible = false
     ITEM_VARIABLES.ALPHA_CREST.active = false
     ITEM_VARIABLES.GOLDEN_FLEECE.invulnerabilityTimeOut = 0
@@ -119,11 +131,11 @@ end
 function Alternity.cloakAndDaggerEffect(player, data)
     player = player:ToPlayer()
     
-    if data.cloakAndDagger == nil then
+    if data.cloakAndDagger == nil or data.cloakAndDagger < 0 then
         data.cloakAndDagger = 0
     elseif player:GetFireDirection() ~= Direction.NO_DIRECTION then
         data.cloakAndDagger = data.cloakAndDagger + 1
-    else
+    elseif data.cloakAndDagger > 0 then
         data.cloakAndDagger = data.cloakAndDagger - 1
     end
     
@@ -139,7 +151,7 @@ function Alternity.cloakAndDaggerEffect(player, data)
         data.invisTimeout = data.invisTimeout - 1
     end
     
-    if data.cloakAndDagger == 90 then
+    if data.cloakAndDagger >= 90 then
         local knife = ENTITIES.CLOAK_AND_DAGGER:spawn(player.Position, Vector(0,0), player)
         knife.CollisionDamage = 10
         data.cloakAndDagger = 0
@@ -199,46 +211,44 @@ function Alternity.alphaCrestActivate()
         end
     end
     
-    if totalEnemies > data.alphaCount then
+    if totalEnemies > data.alphaCount or totalEnemies == 0 then
         data.alphaCount = totalEnemies
     end
     
-    local currEnemies = 0
-    
-    for i, entity in pairs(AlphaAPI.entities.enemies) do
-        if entity:IsActiveEnemy(false) then
-            currEnemies = currEnemies + 1
-        end
-    end
-    
-    if currEnemies >= (data.alphaCount * 0.66) and data.alphaCount > 3 then
+    if totalEnemies >= (data.alphaCount * 0.66) and data.alphaCount > 3 then
         ITEM_VARIABLES.ALPHA_CREST.active = true
+        
+        if not ITEM_VARIABLES.ALPHA_CREST.symbol then
+            ITEM_VARIABLES.ALPHA_CREST.symbol = ENTITIES.ALPHA_CREST:spawn(player.Position, Vector(0, 0), player)
+        end
     else
         ITEM_VARIABLES.ALPHA_CREST.active = false
     end
 end
 
 function Alternity.renderAlphaCrest()
-    local sprite = ITEM_VARIABLES.ALPHA_CREST.symbol
-    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
-  
-    if not AlphaAPI.GAME_STATE.ROOM:IsClear() and AlphaAPI.GAME_STATE.ROOM:GetFrameCount() > 10 then
-        if ITEM_VARIABLES.ALPHA_CREST.active then
-            if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
-                sprite:Play("FadeIn", true)
-            end
-        else
-            if sprite:IsFinished("FadeIn") then
-                sprite:Play("FadeOut", true)
+    if ITEM_VARIABLES.ALPHA_CREST.symbol then
+        local sprite = ITEM_VARIABLES.ALPHA_CREST.symbol:GetSprite()
+        local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+        
+        ITEM_VARIABLES.ALPHA_CREST.symbol.Position = player.Position
+      
+        if not AlphaAPI.GAME_STATE.ROOM:IsClear() then
+            if ITEM_VARIABLES.ALPHA_CREST.active then
+                if not sprite:IsPlaying("FadeIn") and not sprite:IsFinished("FadeIn") then
+                    sprite:Play("FadeIn", true)
+                end
+            else
+                if sprite:IsFinished("FadeIn") then
+                    sprite:Play("FadeOut", true)
+                elseif sprite:IsFinished("FadeOut") then
+                    ITEM_VARIABLES.ALPHA_CREST.symbol:Remove()
+                    ITEM_VARIABLES.ALPHA_CREST.symbol = nil
+                end
             end
         end
-    
-        sprite:Update()
-        sprite:Render(AlphaAPI.GAME_STATE.ROOM:WorldToScreenPosition(player.Position), Vector(0, 0), Vector(0, 0))
     end
 end
-
-mod:AddCallback(ModCallbacks.MC_POST_RENDER, Alternity.renderAlphaCrest)
 
 ---<<GOLDEN FLEECE>>---
 function Alternity.goldenFleeceDamage(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
@@ -340,7 +350,7 @@ end
 function Alternity.wisdomToothUpdate(player, data)
     player = player:ToPlayer()
     
-    if player then
+    if player and player:HasWeaponType(WeaponType.WEAPON_TEARS) then
         if data.wisdomToothCharge == nil then
             data.wisdomToothCharge = 0
         elseif player:GetFireDirection() == Direction.NO_DIRECTION and data.wisdomToothCharge < player.MaxFireDelay * 3 then
@@ -350,21 +360,54 @@ function Alternity.wisdomToothUpdate(player, data)
                 player:SetColor(Color(1, 0.3, 1, 1, 50, 0, 50), 15, 1, true, false)
             end
         elseif data.wisdomToothCharge >= player.MaxFireDelay * 3 then
-            for i, ent in pairs(AlphaAPI.entities.friendly) do
-                local tear = ent:ToTear()
-                
-                if tear and ent.FrameCount == 1 then
-                    tear:ChangeVariant(TearVariant.TOOTH)
-                    tear.Scale = tear.Scale * 1.2
-                    tear.TearFlags = tear.TearFlags | TearFlags.TEAR_HOMING
-                    tear:SetColor(Color(1, 0, 1, 1, 0, 0, 0), -1, 1, false, false)
-                    tear.CollisionDamage = player.Damage * 3.5
-                    
-                    data.wisdomToothCharge = 0
+            for i, ent in pairs(AlphaAPI.entities.all) do
+                if ent.FrameCount == 1 then
+                    if ent:ToTear() then
+                        local tear = ent:ToTear()
+                        
+                        tear:ChangeVariant(TearVariant.TOOTH)
+                        tear.Scale = tear.Scale * 1.2
+                        tear.TearFlags = tear.TearFlags | TearFlags.TEAR_HOMING
+                        tear:SetColor(Color(1, 0, 1, 1, 0, 0, 0), -1, 1, false, false)
+                        tear.CollisionDamage = tear.CollisionDamage * 3.5
+                        
+                        data.wisdomToothCharge = 0
+                    end
                 end
             end
         else
             data.wisdomToothCharge = 0
+        end
+    end
+end
+
+---<<ANTI-MATTER>>---
+function Alternity.makeAntiMatterTear(tear, data)
+    if AlphaAPI.getLuckRNG(1, 1) and not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.ANTIMATTER_TEAR) then
+        AlphaAPI.addFlag(tear, ENTITY_FLAGS.ANTIMATTER_TEAR)
+        tear:GetSprite():Load("gfx/effects/effect_antimatter_tears.anm2", true)
+        tear:GetSprite():Play("Idle", true)
+    end
+end
+
+function Alternity.antiMatterDamage(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    local tear = AlphaAPI.getEntityFromRef(dmgSource)
+    
+    if AlphaAPI.hasFlag(tear, ENTITY_FLAGS.ANTIMATTER_TEAR) and entity:IsActiveEnemy(false) then
+        if entity.HitPoints - dmgAmount <= 0 then
+            local explo = ENTITIES.ANTIMATTER_EXPLOSION:spawn(entity.Position, Vector(0, 0), player)
+            explo.SpriteScale = Vector(0.6, 0.6)
+            
+            for i, ent in pairs(AlphaAPI.entities.enemies) do
+                if entity.Position:DistanceSquared(ent.Position) <= 10000 and entity:IsVulnerableEnemy() then
+                    if ent:IsBoss() then
+                        ent:TakeDamage(30, 0, EntityRef(player), 30)
+                    else
+                        ent:Kill()
+                    end
+                end
+            end
         end
     end
 end
