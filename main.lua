@@ -22,6 +22,7 @@ ITEM_VARIABLES.CLOAK_AND_DAGGER = { invisible = false }
 ITEM_VARIABLES.ALPHA_CREST = { active = false, symbol = nil }
 ITEM_VARIABLES.GOLDEN_FLEECE = { invulnerabilityTimeOut = 0 }
 ITEM_VARIABLES.AZAZELS_LOST_HORN = { swirls = {} }
+ITEM_VARIABLES.WISDOM_TOOTH = { wisdomTooth = false, hasFired = 0 }
 
 local function start()
     alphaMod = AlphaAPI.registerMod(mod)
@@ -29,7 +30,8 @@ local function start()
     MOD_RNG = RNG()
     
     ENTITY_FLAGS = {
-        ANTIMATTER_TEAR = AlphaAPI.createFlag()
+        ANTIMATTER_TEAR = AlphaAPI.createFlag(),
+        CHOPSTICK_TEAR = AlphaAPI.createFlag()
     }
     
     SOUNDS = {}
@@ -61,10 +63,17 @@ local function start()
     
     PASSIVES.WISDOM_TOOTH = alphaMod:registerItem("Wisdom Tooth")
     PASSIVES.WISDOM_TOOTH:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.wisdomToothUpdate, EntityType.ENTITY_PLAYER)
+    PASSIVES.WISDOM_TOOTH:addCallback(AlphaAPI.Callbacks.ENTITY_APPEAR, Alternity.makeWisdomToothTear, EntityType.ENTITY_TEAR)
+    PASSIVES.WISDOM_TOOTH:addCallback(AlphaAPI.Callbacks.ITEM_CACHE, Alternity.resetOnCache)
     
     PASSIVES.ANTI_MATTER = alphaMod:registerItem("Anti-Matter", "gfx/characters/costumes/costume_antimatter.anm2")
     PASSIVES.ANTI_MATTER:addCallback(AlphaAPI.Callbacks.ENTITY_APPEAR, Alternity.makeAntiMatterTear, EntityType.ENTITY_TEAR)
     PASSIVES.ANTI_MATTER:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.antiMatterDamage)
+    
+    PASSIVES.CHOPSTICKS = alphaMod:registerItem("Chopsticks")
+    PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ITEM_CACHE, Alternity.chopsticksCache)
+    PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ENTITY_APPEAR, Alternity.makeChopstickTear, EntityType.ENTITY_TEAR)
+    PASSIVES.CHOPSTICKS:addCallback(AlphaAPI.Callbacks.ENTITY_DAMAGE, Alternity.chopstickCheckCollision)
     
     ACTIVES.EXCALIBUR = alphaMod:registerItem("Excalibur")
     ACTIVES.EXCALIBUR:addCallback(AlphaAPI.Callbacks.ITEM_USE, Alternity.useExcalibur)
@@ -353,37 +362,62 @@ function Alternity.wisdomToothUpdate(player, data)
     if player and player:HasWeaponType(WeaponType.WEAPON_TEARS) then
         if data.wisdomToothCharge == nil then
             data.wisdomToothCharge = 0
-        elseif player:GetFireDirection() == Direction.NO_DIRECTION and data.wisdomToothCharge < player.MaxFireDelay * 3 then
-            data.wisdomToothCharge = data.wisdomToothCharge + 1
-            
-            if data.wisdomToothCharge >= player.MaxFireDelay * 3 then
-                player:SetColor(Color(1, 0.3, 1, 1, 50, 0, 50), 15, 1, true, false)
-            end
-        elseif data.wisdomToothCharge >= player.MaxFireDelay * 3 then
-            for i, ent in pairs(AlphaAPI.entities.all) do
-                if ent.FrameCount == 1 then
-                    if ent:ToTear() then
-                        local tear = ent:ToTear()
-                        
-                        tear:ChangeVariant(TearVariant.TOOTH)
-                        tear.Scale = tear.Scale * 1.2
-                        tear.TearFlags = tear.TearFlags | TearFlags.TEAR_HOMING
-                        tear:SetColor(Color(1, 0, 1, 1, 0, 0, 0), -1, 1, false, false)
-                        tear.CollisionDamage = tear.CollisionDamage * 3.5
-                        
-                        data.wisdomToothCharge = 0
+        end
+        
+        if not ITEM_VARIABLES.WISDOM_TOOTH.wisdomTooth then
+            if player:GetFireDirection() == Direction.NO_DIRECTION then 
+                if data.wisdomToothCharge < player.MaxFireDelay * 3 then
+                    data.wisdomToothCharge = data.wisdomToothCharge + 1
+                    
+                    if data.wisdomToothCharge >= player.MaxFireDelay * 3 then
+                        player:SetColor(Color(1, 0.3, 1, 1, 50, 0, 50), 15, 1, true, false)
+                        ITEM_VARIABLES.WISDOM_TOOTH.wisdomTooth = true
                     end
                 end
+            else
+                data.wisdomToothCharge = 0
             end
-        else
-            data.wisdomToothCharge = 0
         end
+    end
+end
+
+function Alternity.makeWisdomToothTear(tear, data)
+    local player = AlphaAPI.GAME_STATE.PLAYERS[1]
+    
+    if ITEM_VARIABLES.WISDOM_TOOTH.wisdomTooth and tear.Parent:ToPlayer() then
+        if ITEM_VARIABLES.WISDOM_TOOTH.hasFired > 0 then
+            ITEM_VARIABLES.WISDOM_TOOTH.hasFired = ITEM_VARIABLES.WISDOM_TOOTH.hasFired - 1
+            
+            if ITEM_VARIABLES.WISDOM_TOOTH.hasFired <= 0 then
+                ITEM_VARIABLES.WISDOM_TOOTH.wisdomTooth = false
+            end
+            
+            return nil
+        end
+        
+        tear = tear:ToTear()
+        
+        tear:ChangeVariant(TearVariant.TOOTH)
+        tear.Scale = tear.Scale * 1.2
+        tear.TearFlags = tear.TearFlags | TearFlags.TEAR_HOMING
+        tear:SetColor(Color(1, 0, 1, 1, 0, 0, 0), -1, 1, false, false)
+        tear.CollisionDamage = tear.CollisionDamage * 3.5
+        
+        ITEM_VARIABLES.WISDOM_TOOTH.hasFired = math.floor(math.max(1, math.min(15, 50 / player.MaxFireDelay)))
+    end
+end
+
+function Alternity.resetOnCache(player, cacheFlag)
+    if cacheFlag == CacheFlag.CACHE_FIREDELAY then
+        ITEM_VARIABLES.WISDOM_TOOTH.wisdomTooth = false
+        ITEM_VARIABLES.WISDOM_TOOTH.hasFired = 0
+        player:GetData().wisdomToothCharge = 0
     end
 end
 
 ---<<ANTI-MATTER>>---
 function Alternity.makeAntiMatterTear(tear, data)
-    if AlphaAPI.getLuckRNG(1, 1) and not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.ANTIMATTER_TEAR) then
+    if AlphaAPI.getLuckRNG(1, 1) and not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.ANTIMATTER_TEAR) and tear.Parent:ToPlayer() then
         AlphaAPI.addFlag(tear, ENTITY_FLAGS.ANTIMATTER_TEAR)
         tear:GetSprite():Load("gfx/effects/effect_antimatter_tears.anm2", true)
         tear:GetSprite():Play("Idle", true)
@@ -409,6 +443,50 @@ function Alternity.antiMatterDamage(entity, dmgAmount, dmgFlags, dmgSource, invi
                 end
             end
         end
+    end
+end
+
+---<<CHOPSTICKS>>---
+function Alternity.chopsticksCache(player, cacheFlag)
+    if cacheFlag == CacheFlag.CACHE_RANGE then
+        player.TearHeight = player.TearHeight - 7.5
+    end
+    if cacheFlag == CacheFlag.CACHE_DAMAGE then
+        player.Damage = player.Damage + 0.55
+    end
+end
+
+function Alternity.makeChopstickTear(tear, data)
+    if not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) then
+        AlphaAPI.addFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR)
+        
+        tear = tear:ToTear()
+        tear.TearFlags = tear.TearFlags | TearFlags.TEAR_PIERCING
+        tear.SpriteScale = Vector(5, 0.1)
+        tear.SpriteRotation = tear.Velocity:GetAngleDegrees()
+    end
+end
+
+function Alternity.chopstickCheckCollision(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
+    local tear = AlphaAPI.getEntityFromRef(dmgSource)
+    
+    if AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) then
+        local room = AlphaAPI.GAME_STATE.GAME:GetLevel():GetCurrentRoom()
+        local centreY = room:GetCenterPos().Y
+        local centreX = room:GetCenterPos().X
+        
+        local x = entity.Position.X - centreY
+        local y = entity.Position.Y - centreX
+        local a = math.tan((360 - tear.Velocity:GetAngleDegrees()) / 180 * math.pi)
+        local b = -1
+        local c = -(a * x + b * y)
+        
+        local perpendicularDist = math.abs((a * x) + (b * y) + c) / math.sqrt(a^2 + b^2)
+        
+        Isaac.DebugString("| " .. a .. " * " .. x .. " + " .. b .. " * " .. y .. " + " .. c .. " | / sqrt(" .. a .. "^2 + " .. b .. "^2)") 
+        Isaac.DebugString("\nNEW DISTANCE" .. "\nx: " .. x .. "\ny: " .. y .. "\na: " .. a .. "\nb: " .. b .. "\nc: " .. c)
+        
+        Isaac.ConsoleOutput(perpendicularDist)
     end
 end
 
