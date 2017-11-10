@@ -41,6 +41,8 @@ local function start()
     ENTITIES.ALPHA_CREST = alphaMod:getEntityConfig("Alpha Crest", 0)
     ENTITIES.ANTIMATTER_EXPLOSION = alphaMod:getEntityConfig("Antimatter Explosion", 0)
     ENTITIES.CHOPSTICK_TEAR = alphaMod:getEntityConfig("Chopstick Tear", 0)
+    ENTITIES.INCUBUS = alphaMod:getEntityConfig("Incubus", 0)
+    ENTITIES.FATES_REWARD = alphaMod:getEntityConfig("Fate's Reward", 0)
     
     PASSIVES.CLOAK_AND_DAGGER = alphaMod:registerItem("Cloak and Dagger")
     PASSIVES.CLOAK_AND_DAGGER:addCallback(AlphaAPI.Callbacks.ENTITY_UPDATE, Alternity.cloakAndDaggerEffect, EntityType.ENTITY_PLAYER)
@@ -461,7 +463,7 @@ end
 function Alternity.makeChopstickTear(tear, data)
     local player = AlphaAPI.GAME_STATE.PLAYERS[1]
     
-    if not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) then
+    if not AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) and (tear.SpawnerType == EntityType.ENTITY_PLAYER or (tear.SpawnerType == EntityType.ENTITY_FAMILIAR and (tear.SpawnerVariant == ENTITIES.INCUBUS.variant or tear.SpawnerVariant == ENTITIES.FATES_REWARD.variant))) then
         AlphaAPI.addFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR)
         
         tear = tear:ToTear()
@@ -481,22 +483,26 @@ function Alternity.makeChopstickTear(tear, data)
 end
 
 function Alternity.chopstickCheckCollision(entity, dmgAmount, dmgFlags, dmgSource, invincibilityFrames)
-    local tear = AlphaAPI.getEntityFromRef(dmgSource):ToTear()
+    local tear = AlphaAPI.getEntityFromRef(dmgSource)
     
-    if AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) and tear then
+    if tear then
+        tear = tear:ToTear()
+    end
+    
+    if tear and AlphaAPI.hasFlag(tear, ENTITY_FLAGS.CHOPSTICK_TEAR) then
         local room = AlphaAPI.GAME_STATE.GAME:GetLevel():GetCurrentRoom()
-        local centreY = room:GetCenterPos().Y
-        local centreX = room:GetCenterPos().X
+        local centre = room:GetCenterPos()
         
-        local x1 = tear.Position.X - centreX
-        local y1 = tear.Position.Y - centreY
-        local x2 = entity.Position.X - centreX
-        local y2 = entity.Position.Y - centreY
+        local offset = Vector(0, math.abs(tear.Height / 2)):Rotated(tear.SpriteRotation)
+        offset.X = 0
+        
+        local tearPos = tear.Position - centre - offset
+        local entPos = entity.Position - centre
         local a = math.tan((360 - tear.Velocity:GetAngleDegrees()) / 180 * math.pi)
         local b = -1
-        local c = y1 - (a * x1)
+        local c = tearPos.Y - (a * tearPos.X)
         
-        local perpendicularDist = math.abs((a * x2) + (b * y2) + c) / math.sqrt(a^2 + b^2)
+        local perpendicularDist = math.abs((a * entPos.X) + (b * entPos.Y) + c) / math.sqrt(a^2 + b^2)
         
         if perpendicularDist > math.sqrt(400 * tear.SpriteScale.Y) then
             return false
